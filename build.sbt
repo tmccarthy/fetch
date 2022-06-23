@@ -63,7 +63,6 @@ lazy val awsTextract = project
   .settings(
     libraryDependencies += "org.typelevel"                   %% "cats-effect"                    % "2.2.0",
     libraryDependencies += "co.fs2"                          %% "fs2-core"                       % "2.5.0",
-    libraryDependencies += "au.id.tmm.ausgeo"                %% "ausgeo-core"                    % "0.2.6",
     libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "0.0.1",
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-core"     % tmmCollectionsVersion,
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-cats"     % tmmCollectionsVersion,
@@ -73,7 +72,6 @@ lazy val awsTextract = project
     libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "0.0.1",
     libraryDependencies += "com.softwaremill.sttp.client3"   %% "core"                           % "3.0.0-RC7",
     libraryDependencies += "com.softwaremill.sttp.client3"   %% "async-http-client-backend-cats" % "3.0.0-RC7",
-    libraryDependencies += "org.jsoup"                        % "jsoup"                          % "1.13.1",
     libraryDependencies += "software.amazon.awssdk"           % "textract"                       % "2.15.33",
     libraryDependencies += "software.amazon.awssdk"           % "s3"                             % "2.15.33",
     libraryDependencies += "software.amazon.awssdk"           % "dynamodb"                       % "2.15.33",
