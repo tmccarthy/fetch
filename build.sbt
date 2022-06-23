@@ -21,6 +21,7 @@ lazy val root = project
   .aggregate(
     core,
     dbLib,
+    awsTextract,
   )
 
 lazy val core = project
