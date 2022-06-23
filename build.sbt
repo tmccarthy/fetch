@@ -5,14 +5,14 @@ ThisBuild / baseProjectName := "fetch"
 ThisBuild / githubProjectName := "fetch"
 ThisBuild / githubWorkflowJavaVersions := List("adopt@1.11")
 
-val circeVersion      = "0.15.0-M1"
-val awsSdkVersion     = "2.15.33"
-val tmmUtilsVersion   = "0.9.1"
-val tmmCollectionsVersion   = "0.0.5"
-val fs2Version        = "3.2.7"
-val sttpVersion       = "3.5.2"
-val catsEffectVersion = "3.2.9"
-val slf4jVersion      = "2.0.0-alpha1"
+val circeVersion          = "0.15.0-M1"
+val awsSdkVersion         = "2.15.33"
+val tmmUtilsVersion       = "0.9.1"
+val tmmCollectionsVersion = "0.0.5"
+val fs2Version            = "3.2.7"
+val sttpVersion           = "3.5.2"
+val catsEffectVersion     = "3.2.9"
+val slf4jVersion          = "2.0.0-alpha1"
 
 lazy val root = project
   .in(file("."))
