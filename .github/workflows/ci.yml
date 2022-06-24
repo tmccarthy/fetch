@@ -55,7 +55,7 @@ jobs:
       - run: sbt ++${{ matrix.scala }} test scalafmtCheckAll scalafmtSbtCheck
 
       - name: Compress target directories
-        run: tar cf targets.tar target core/target db-lib/target aws-textract/target project/target
+        run: tar cf targets.tar target core/target aws-textract/target project/target
 
       - name: Upload target directories
         uses: actions/upload-artifact@v2

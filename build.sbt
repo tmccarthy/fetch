@@ -20,7 +20,7 @@ lazy val root = project
   .settings(console := (core / Compile / console).value)
   .aggregate(
     core,
-    dbLib,
+    cache,
     awsTextract,
   )
 
@@ -44,18 +44,15 @@ lazy val core = project
     libraryDependencies += "org.slf4j"                      % "slf4j-simple"                   % slf4jVersion % Runtime,
   )
 
-lazy val dbLib = project
-  .in(file("db-lib"))
-  .settings(settingsForSubprojectCalled("db-lib"))
+lazy val cache = project
+  .in(file("cache"))
+  .settings(settingsForSubprojectCalled("cache"))
+  .dependsOn(core)
   .settings(
-    libraryDependencies += "org.typelevel"       %% "cats-effect"         % catsEffectVersion,
-    libraryDependencies += "org.postgresql"       % "postgresql"          % "42.2.5",
-    libraryDependencies += "co.fs2"              %% "fs2-core"            % fs2Version,
-    libraryDependencies += "com.zaxxer"           % "HikariCP"            % "5.0.1",
-    libraryDependencies += "au.id.tmm.tmm-utils" %% "tmm-utils-cats"      % tmmUtilsVersion, // TODO this might be excessive when this is its own library
-    libraryDependencies += "org.slf4j"            % "slf4j-simple"        % slf4jVersion % Runtime,
-    libraryDependencies += "org.xerial"           % "sqlite-jdbc"         % "3.36.0.3"   % Test,
-    libraryDependencies += "org.typelevel"       %% "munit-cats-effect-3" % "1.0.5"      % Test,
+    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core" % "0.0.0+1-95b0365f",
+    libraryDependencies += "org.slf4j"                      % "slf4j-simple"                   % slf4jVersion % Runtime,
+    libraryDependencies += "org.xerial"     % "sqlite-jdbc"         % "3.36.0.3"   % Test,
+    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5"      % Test,
   )
 
 lazy val awsTextract = project
