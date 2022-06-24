@@ -72,8 +72,8 @@ class S3WorkingEnvironment(
 
   def s3ObjectFor(bytes: ArraySeq.ofByte, contentType: Option[String]): IO[S3ObjectRef] = {
     val bytesMd5 = bytes.md5
-    val name = S3Key(bytesMd5.asBase64String)
-    val key = namePrefix resolve name
+    val name     = S3Key(bytesMd5.asBase64String)
+    val key      = namePrefix resolve name
 
     val check: IO[CheckResult] =
       for {
@@ -87,8 +87,8 @@ class S3WorkingEnvironment(
 
         maybeHeadResponse <- toIO(s3Client.headObject(headRequest))
           .map[Option[HeadObjectResponse]](Some(_))
-          .recover {
-            case e: NoSuchKeyException => None
+          .recover { case e: NoSuchKeyException =>
+            None
           }
 
         contentType = maybeHeadResponse.flatMap(_.metadata.asScala.get("Content-Type"))
@@ -142,11 +142,11 @@ object S3WorkingEnvironment {
   final case class S3ObjectRef(bucket: S3BucketName, key: S3Key)
   final case class S3Key(elements: List[String]) extends AnyVal {
     def resolve(that: S3Key): S3Key = S3Key(this.elements ++ that.elements)
-    def toRaw: String = this.elements.mkString(sep = "/")
+    def toRaw: String               = this.elements.mkString(sep = "/")
   }
 
   object S3Key {
-    def apply(asString: String): S3Key = S3Key(asString.split('/').toList)
+    def apply(asString: String): S3Key  = S3Key(asString.split('/').toList)
     def apply(elements: String*): S3Key = S3Key(elements.toList)
   }
 

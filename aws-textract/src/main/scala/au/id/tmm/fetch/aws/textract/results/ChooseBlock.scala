@@ -20,7 +20,7 @@ object ChooseBlock {
   def mostSimilarToText[B <: ReadableText](
     searchText: String,
     comparisonAlgorithm: (String, String) => Int = FuzzySearch.partialRatio,
-    threshold: Int                               = 88,
+    threshold: Int = 88,
   ): ChooseBlock[B] = {
     val lowerCaseSearchText = searchText.toLowerCase
 

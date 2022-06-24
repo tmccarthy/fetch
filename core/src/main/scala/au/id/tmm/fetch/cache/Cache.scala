@@ -15,7 +15,7 @@ final class Cache[F[_], K, V_IN, V_OUT] private (store: KVStore[F, K, V_IN, V_OU
         case None =>
           for {
             vIn <- fetch
-            v <- store.put(k, vIn)
+            v   <- store.put(k, vIn)
           } yield v
       }
     } yield v

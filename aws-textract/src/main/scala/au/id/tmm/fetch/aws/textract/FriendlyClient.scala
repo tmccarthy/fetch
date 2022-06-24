@@ -8,12 +8,7 @@ import au.id.tmm.fetch.aws.textract.FriendlyClient.JobIdCache.UsingDynamoDb.{
   makeTableIfNoneDefined,
   waitForTableCreated,
 }
-import au.id.tmm.fetch.aws.textract.FriendlyClient.{
-  CachedJobHasExpired,
-  Document,
-  DocumentContent,
-  logger,
-}
+import au.id.tmm.fetch.aws.textract.FriendlyClient.{CachedJobHasExpired, Document, DocumentContent, logger}
 import au.id.tmm.fetch.aws.textract.model.AnalysisResult
 import au.id.tmm.fetch.aws.{RetryEffect, S3Key, toIO}
 import au.id.tmm.digest4s.binarycodecs.syntax._

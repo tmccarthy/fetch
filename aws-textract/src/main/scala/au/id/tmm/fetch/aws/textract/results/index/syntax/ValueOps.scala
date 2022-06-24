@@ -6,8 +6,8 @@ import au.id.tmm.utilities.errors.ExceptionOr
 
 final class ValueOps private (value: KeyValueSet.Value)(implicit index: AnalysisResultIndex)
     extends BlockCommonOps[KeyValueSet.Value](value) {
-  def parent: ExceptionOr[Page] = index.parentOf(value)
-  def kvSet: ExceptionOr[KeyValueSet] = index.kvSetFor(value)
+  def parent: ExceptionOr[Page]         = index.parentOf(value)
+  def kvSet: ExceptionOr[KeyValueSet]   = index.kvSetFor(value)
   def key: ExceptionOr[KeyValueSet.Key] = index.keyFor(value)
 }
 

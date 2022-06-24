@@ -43,18 +43,18 @@ final case class Page(
   children: ArraySeq[Page.Child],
 ) extends Block {
   def lines: ArraySeq[Line] =
-    children.collect {
-      case Page.Child.OfLine(l) => l
+    children.collect { case Page.Child.OfLine(l) =>
+      l
     }
 
   def tables: ArraySeq[Table] =
-    children.collect {
-      case Page.Child.OfTable(t) => t
+    children.collect { case Page.Child.OfTable(t) =>
+      t
     }
 
   def keyValueSets: ArraySeq[KeyValueSet] =
-    children.collect {
-      case Page.Child.OfKeyValueSet(kvSet) => kvSet
+    children.collect { case Page.Child.OfKeyValueSet(kvSet) =>
+      kvSet
     }
 }
 

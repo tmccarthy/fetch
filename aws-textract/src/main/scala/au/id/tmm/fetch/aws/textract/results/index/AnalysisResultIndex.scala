@@ -92,8 +92,8 @@ final class AnalysisResultIndex private (
 
   def siblingsOf(keyValueSet: KeyValueSet): ExceptionOr[ArraySeq[KeyValueSet]] =
     parentOf(keyValueSet).map(p =>
-      p.children.collect {
-        case Page.Child.OfKeyValueSet(kvSet) => kvSet
+      p.children.collect { case Page.Child.OfKeyValueSet(kvSet) =>
+        kvSet
       },
     )
 
@@ -149,14 +149,14 @@ object AnalysisResultIndex {
 
   def apply(analysisResult: AnalysisResult): AnalysisResultIndex = {
     val atomicBlockParents: mutable.Map[AtomicBlock, AtomicBlockParent] = mutable.Map()
-    val cellParents: mutable.Map[Table.Cell, Table] = mutable.Map()
-    val tableParents: mutable.Map[Table, Page] = mutable.Map()
-    val lineParents: mutable.Map[Line, Page] = mutable.Map()
-    val kvSetParents: mutable.Map[KeyValueSet, Page] = mutable.Map()
+    val cellParents: mutable.Map[Table.Cell, Table]                     = mutable.Map()
+    val tableParents: mutable.Map[Table, Page]                          = mutable.Map()
+    val lineParents: mutable.Map[Line, Page]                            = mutable.Map()
+    val kvSetParents: mutable.Map[KeyValueSet, Page]                    = mutable.Map()
 
     val tableCellLookup: mutable.Map[Table, Map[(Int, Int), Table.Cell]] = mutable.Map()
-    val kvForKeyLookup: mutable.Map[KeyValueSet.Key, KeyValueSet] = mutable.Map()
-    val kvForValueLookup: mutable.Map[KeyValueSet.Value, KeyValueSet] = mutable.Map()
+    val kvForKeyLookup: mutable.Map[KeyValueSet.Key, KeyValueSet]        = mutable.Map()
+    val kvForValueLookup: mutable.Map[KeyValueSet.Value, KeyValueSet]    = mutable.Map()
 
     analysisResult.pages.foreach { page =>
       page.children.foreach {

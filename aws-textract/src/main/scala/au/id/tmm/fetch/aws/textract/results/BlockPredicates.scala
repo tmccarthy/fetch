@@ -8,8 +8,8 @@ import scala.collection.immutable.ArraySeq
 
 object BlockPredicates {
 
-  def lineHasWordsLike(searchText: String)(line: Line): Boolean = hasWordsLike(searchText, line.children)
-  def cellHasWordsLike(searchText: String)(cell: Table.Cell): Boolean = hasWordsLike(searchText, cell.children)
+  def lineHasWordsLike(searchText: String)(line: Line): Boolean          = hasWordsLike(searchText, line.children)
+  def cellHasWordsLike(searchText: String)(cell: Table.Cell): Boolean    = hasWordsLike(searchText, cell.children)
   def keyHasWordsLike(searchText: String)(key: KeyValueSet.Key): Boolean = hasWordsLike(searchText, key.children)
   def valueHasWordsLike(searchText: String)(value: KeyValueSet.Value): Boolean =
     hasWordsLike(searchText, value.children)
