@@ -19,7 +19,7 @@ class SqliteStoreTest extends CatsEffectSuite {
   private val storeFixture: SyncIO[FunFixture[SqliteStore]] = ResourceFixture {
     for {
       dbFilePath <- dbFilePath
-      store <- SqliteStore.at(dbFilePath)
+      store      <- SqliteStore.at(dbFilePath)
     } yield store
   }
 
@@ -87,10 +87,8 @@ class SqliteStoreTest extends CatsEffectSuite {
 
   ResourceFixture(dbFilePath).test("open store on existing file") { dbFilePath =>
     for {
-      _ <- IO(Files.writeString(dbFilePath, "test"))
-      attempted <- SqliteStore.at(dbFilePath)
-        .use_
-        .attempt
+      _         <- IO(Files.writeString(dbFilePath, "test"))
+      attempted <- SqliteStore.at(dbFilePath).use_.attempt
     } yield assert(attempted.isLeft)
   }
 

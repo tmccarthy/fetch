@@ -55,7 +55,7 @@ object SqliteStore {
   def at(path: Path): Resource[IO, SqliteStore] =
     for {
       isExistingStore <- Resource.liftK(isExistingStore(path))
-      db <- databaseAt(path)
+      db              <- databaseAt(path)
       _ <- Resource.liftK {
         if (isExistingStore) sanityCheck(db) else runSetupScript(db)
       }
@@ -78,7 +78,7 @@ object SqliteStore {
   private def sanityCheck(database: Database): IO[Unit] =
     for {
       tableTuple <- database.query[(String, TableName)](
-        sql"SELECT `type`, name FROM sqlite_schema WHERE type = 'table' AND name = ${table.asString}".asQueryStatement
+        sql"SELECT `type`, name FROM sqlite_schema WHERE type = 'table' AND name = ${table.asString}".asQueryStatement,
       )
       _ <- IO.raiseUnless(tableTuple == ArraySeq(("table", table)))(GenericException("Failed sanity check"))
     } yield ()
