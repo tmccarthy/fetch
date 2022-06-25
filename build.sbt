@@ -49,10 +49,11 @@ lazy val cache = project
   .settings(settingsForSubprojectCalled("cache"))
   .dependsOn(core)
   .settings(
-    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core"       % "0.0.0+1-95b0365f",
+    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core"       % "0.0.0+3-716baf9f",
     libraryDependencies += "org.slf4j"           % "slf4j-simple"        % slf4jVersion % Runtime,
     libraryDependencies += "org.xerial"          % "sqlite-jdbc"         % "3.36.0.3"   % Test,
     libraryDependencies += "org.typelevel"      %% "munit-cats-effect-3" % "1.0.5"      % Test,
+    libraryDependencies += "org.scalameta"      %% "munit-scalacheck"    % "0.7.29"     % Test,
   )
 
 lazy val awsTextract = project

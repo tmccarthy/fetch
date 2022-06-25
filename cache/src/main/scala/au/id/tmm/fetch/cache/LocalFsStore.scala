@@ -37,6 +37,8 @@ class LocalFsStore private (private val directory: Path) extends KVStore[IO, Pat
       result = if (present) Some(resolvedPath) else None
     } yield result
 
+  override def contains(k: Path): IO[Boolean] = IO(Files.exists(k))
+
   override def put(k: Path, v: BytesSource): IO[Path] =
     for {
       resolvedPath <- resolve(k)
@@ -48,7 +50,11 @@ class LocalFsStore private (private val directory: Path) extends KVStore[IO, Pat
       }
     } yield resolvedPath
 
-  override def contains(k: Path): IO[Boolean] = IO(Files.exists(k))
+  override def drop(k: Path): IO[Unit] =
+    for {
+      resolvedPath <- resolve(k)
+      _            <- IO(Files.deleteIfExists(resolvedPath))
+    } yield ()
 }
 
 object LocalFsStore {

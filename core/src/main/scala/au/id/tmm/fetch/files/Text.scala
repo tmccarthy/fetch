@@ -9,6 +9,14 @@ import scala.io.Codec
 
 object Text {
 
+  def string(
+    makeInputStream: IO[InputStream],
+    charset: Charset,
+  ): IO[String] =
+    Closeables.resourceFrom(makeInputStream).use { is =>
+      IO(new String(is.readAllBytes(), charset))
+    }
+
   def lines(charset: Charset): fs2.Pipe[IO, Byte, String] =
     _.through(fs2.text.decodeWithCharset(charset))
       .through(fs2.text.lines)
