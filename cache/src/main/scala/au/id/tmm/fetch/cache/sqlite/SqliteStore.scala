@@ -13,6 +13,8 @@ import au.id.tmm.fetch.files.Text
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.{IO, Resource}
 
+import scala.collection.immutable.ArraySeq
+
 class SqliteStore private (private val database: Database) extends KVStore[IO, String, String, String] {
   override def get(k: String): IO[Option[String]] =
     database.queryOneOrNoElement(sql"SELECT $valColumn FROM $table WHERE $keyColumn = $k".asQueryStatement)
@@ -52,20 +54,35 @@ object SqliteStore {
 
   def at(path: Path): Resource[IO, SqliteStore] =
     for {
-      _ <- Resource.liftK(IO(Files.deleteIfExists(path))) // TODO re-establish it
-      db <- Database(
-        new URI("jdbc:sqlite:" + path.toString),
-        username = "",
-        password = "",
-        dataSourceProperties = Map.empty,
-      )
+      isExistingStore <- Resource.liftK(isExistingStore(path))
+      db <- databaseAt(path)
       _ <- Resource.liftK {
-        for {
-          rawSql <- Text.string(IO(getClass.getResourceAsStream("sqlite_store_setup.sql")), StandardCharsets.UTF_8)
-          updateStatement = UpdateStatement(Sql(rawSql))
-          _ <- db.update(updateStatement)
-        } yield ()
+        if (isExistingStore) sanityCheck(db) else runSetupScript(db)
       }
     } yield new SqliteStore(db)
+
+  private def databaseAt(path: Path): Resource[IO, Database] = Database(
+    new URI("jdbc:sqlite:" + path.toString),
+    username = "",
+    password = "",
+    dataSourceProperties = Map.empty,
+  )
+
+  private def runSetupScript(database: Database): IO[Unit] =
+    for {
+      rawSql <- Text.string(IO(getClass.getResourceAsStream("sqlite_store_setup.sql")), StandardCharsets.UTF_8)
+      updateStatement = UpdateStatement(Sql(rawSql))
+      _ <- database.update(updateStatement)
+    } yield ()
+
+  private def sanityCheck(database: Database): IO[Unit] =
+    for {
+      tableTuple <- database.query[(String, TableName)](
+        sql"SELECT `type`, name FROM sqlite_schema WHERE type = 'table' AND name = ${table.asString}".asQueryStatement
+      )
+      _ <- IO.raiseUnless(tableTuple == ArraySeq(("table", table)))(GenericException("Failed sanity check"))
+    } yield ()
+
+  private def isExistingStore(path: Path): IO[Boolean] = IO(Files.exists(path))
 
 }

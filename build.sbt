@@ -49,7 +49,7 @@ lazy val cache = project
   .settings(settingsForSubprojectCalled("cache"))
   .dependsOn(core)
   .settings(
-    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core"       % "0.0.0+3-716baf9f",
+    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core"       % "0.0.0+3-716baf9f+20220625-2051",
     libraryDependencies += "org.slf4j"           % "slf4j-simple"        % slf4jVersion % Runtime,
     libraryDependencies += "org.xerial"          % "sqlite-jdbc"         % "3.36.0.3"   % Test,
     libraryDependencies += "org.typelevel"      %% "munit-cats-effect-3" % "1.0.5"      % Test,

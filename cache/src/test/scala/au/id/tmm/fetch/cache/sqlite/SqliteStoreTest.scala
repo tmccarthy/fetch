@@ -1,6 +1,6 @@
 package au.id.tmm.fetch.cache.sqlite
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 
 import cats.effect.kernel.Resource
 import cats.effect.{IO, SyncIO}
@@ -8,15 +8,17 @@ import munit.CatsEffectSuite
 
 class SqliteStoreTest extends CatsEffectSuite {
 
-  // TODO use a testing library
+  private val dbFilePath: Resource[IO, Path] =
+    Resource.make(IO(Files.createTempDirectory(getClass.getSimpleName).resolve("test.db"))) { path =>
+      for {
+        _ <- IO(Files.deleteIfExists(path))
+        _ <- IO(Files.deleteIfExists(path.getParent))
+      } yield ()
+    }
+
   private val storeFixture: SyncIO[FunFixture[SqliteStore]] = ResourceFixture {
     for {
-      dbFilePath <- Resource.make(IO(Files.createTempDirectory(getClass.getSimpleName).resolve("test.db"))) { path =>
-        for {
-          _ <- IO(Files.deleteIfExists(path))
-          _ <- IO(Files.deleteIfExists(path.getParent))
-        } yield ()
-      }
+      dbFilePath <- dbFilePath
       store <- SqliteStore.at(dbFilePath)
     } yield store
   }
@@ -64,6 +66,32 @@ class SqliteStoreTest extends CatsEffectSuite {
       _        <- store.drop("key")
       obtained <- store.get("key")
     } yield assertEquals(obtained, None)
+  }
+
+  ResourceFixture(dbFilePath).test("put close reopen") { dbFilePath =>
+    for {
+      _ <- SqliteStore.at(dbFilePath).use { store =>
+        store.put("key", "value")
+      }
+      obtained <- SqliteStore.at(dbFilePath).use { store =>
+        store.get("key")
+      }
+    } yield assertEquals(obtained, Some("value"))
+  }
+
+  ResourceFixture(dbFilePath).test("open store on directory") { dbFilePath =>
+    SqliteStore.at(dbFilePath.getParent).use_.attempt.map { attempted =>
+      assert(attempted.isLeft)
+    }
+  }
+
+  ResourceFixture(dbFilePath).test("open store on existing file") { dbFilePath =>
+    for {
+      _ <- IO(Files.writeString(dbFilePath, "test"))
+      attempted <- SqliteStore.at(dbFilePath)
+        .use_
+        .attempt
+    } yield assert(attempted.isLeft)
   }
 
 }
