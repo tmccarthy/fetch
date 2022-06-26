@@ -15,7 +15,13 @@ import cats.syntax.traverse._
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.client.config.{ClientAsyncConfiguration, SdkAdvancedAsyncClientOption}
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, HeadObjectResponse, NoSuchKeyException, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model.{
+  DeleteObjectRequest,
+  HeadObjectRequest,
+  HeadObjectResponse,
+  NoSuchKeyException,
+  PutObjectRequest,
+}
 import sttp.client3.Response
 import sttp.model.HeaderNames
 
@@ -30,12 +36,12 @@ class S3Store private (
 ) extends KVStore[IO, S3Key, S3Store.Source, S3ObjectRef] {
   override def get(k: S3Key): IO[Option[S3ObjectRef]] =
     contains(k).map {
-      case true => Some(makeObjectRefFor(resolve(k)))
+      case true  => Some(makeObjectRefFor(resolve(k)))
       case false => None
     }
 
   override def contains(k: S3Key): IO[Boolean] = checkKey(resolve(k)).map {
-    case S3CheckResult.NoObjectAtKey => false
+    case S3CheckResult.NoObjectAtKey                                                => false
     case S3CheckResult.ObjectAtKeyMissingMetadata | S3CheckResult.ObjectAtKey(_, _) => true
   }
 
@@ -50,17 +56,19 @@ class S3Store private (
         case S3CheckResult.ObjectAtKey(existingObjectContentType, existingObjectChecksum) =>
           for {
             digest <- IO.pure(source.bytes.md5)
-            _ <- if (existingObjectChecksum == digest && source.contentType.contains(existingObjectContentType)) {
-              IO.unit
-            } else {
-              s3Put(resolvedKey, source, digest)
-            }
+            _ <-
+              if (existingObjectChecksum == digest && source.contentType.contains(existingObjectContentType)) {
+                IO.unit
+              } else {
+                s3Put(resolvedKey, source, digest)
+              }
           } yield ()
       }
     } yield makeObjectRefFor(resolvedKey)
 
   override def drop(k: S3Key): IO[Unit] = {
-    val request = DeleteObjectRequest.builder()
+    val request = DeleteObjectRequest
+      .builder()
       .bucket(bucket.asString)
       .key(resolve(k).asKey.toRaw)
       .build()
@@ -70,12 +78,11 @@ class S3Store private (
 
   private def resolve(givenKey: S3Key): S3KeyResolvedAgainstPrefix = namePrefix match {
     case Some(prefix) => S3KeyResolvedAgainstPrefix(prefix.resolve(givenKey))
-    case None => S3KeyResolvedAgainstPrefix(givenKey)
+    case None         => S3KeyResolvedAgainstPrefix(givenKey)
   }
 
-  private def makeObjectRefFor(resolvedKey: S3KeyResolvedAgainstPrefix) = {
+  private def makeObjectRefFor(resolvedKey: S3KeyResolvedAgainstPrefix) =
     S3ObjectRef(bucket, resolvedKey.asKey)
-  }
 
   private def checkKey(key: S3KeyResolvedAgainstPrefix): IO[S3CheckResult] = {
     val request: HeadObjectRequest = HeadObjectRequest
@@ -87,13 +94,13 @@ class S3Store private (
     val maybeSdkHeadResponse: IO[Option[HeadObjectResponse]] =
       toIO(IO(s3Client.headObject(request)))
         .map[Option[HeadObjectResponse]](Some(_))
-        .recover {
-          case e: NoSuchKeyException => None
+        .recover { case e: NoSuchKeyException =>
+          None
         }
 
     maybeSdkHeadResponse.flatMap {
       case Some(response) => IO.fromEither(checkResultFrom(response))
-      case None => IO.pure(S3CheckResult.NoObjectAtKey)
+      case None           => IO.pure(S3CheckResult.NoObjectAtKey)
     }
   }
 
@@ -102,18 +109,23 @@ class S3Store private (
 
     val contentType: Option[String] = metadataMap.get("Content-Type")
 
-    val errorOrDigest: ExceptionOr[Option[MD5Digest]] = metadataMap.get("Content-MD5")
+    val errorOrDigest: ExceptionOr[Option[MD5Digest]] = metadataMap
+      .get("Content-MD5")
       .traverse(_.parseBase64.map(MD5Digest.apply))
 
     errorOrDigest.map { digest =>
       (contentType, digest) match {
         case (Some(contentType), Some(digest)) => S3CheckResult.ObjectAtKey(contentType, digest)
-        case _ => S3CheckResult.ObjectAtKeyMissingMetadata
+        case _                                 => S3CheckResult.ObjectAtKeyMissingMetadata
       }
     }
   }
 
-  private def s3Put(key: S3KeyResolvedAgainstPrefix, source: Source, sourceMd5: MD5Digest): IO[Unit] = {
+  private def s3Put(
+    key: S3KeyResolvedAgainstPrefix,
+    source: Source,
+    sourceMd5: MD5Digest,
+  ): IO[Unit] = {
     val request = PutObjectRequest
       .builder()
       .bucket(bucket.asString)
@@ -140,12 +152,16 @@ object S3Store {
       ec <- Resource.liftK(IO.executionContext)
       executor = ec match {
         case executor: Executor => Some(executor)
-        case _ => None
+        case _                  => None
       }
       s3Store <- S3Store(bucket, namePrefix, executor)
     } yield s3Store
 
-  def apply(bucket: S3BucketName, namePrefix: Option[S3Key], executor: Option[Executor]): Resource[IO, S3Store] =
+  def apply(
+    bucket: S3BucketName,
+    namePrefix: Option[S3Key],
+    executor: Option[Executor],
+  ): Resource[IO, S3Store] =
     s3Client(executor).map(s3Client => new S3Store(bucket, namePrefix, s3Client))
 
   private def s3Client(executor: Option[Executor]): Resource[IO, S3AsyncClient] =
@@ -168,7 +184,7 @@ object S3Store {
 
   final case class Source(
     bytes: ArraySeq.ofByte, // TODO not sure about the type here
-    contentType: Option[String]
+    contentType: Option[String],
   )
 
   object Source {
@@ -192,6 +208,6 @@ object S3Store {
     final case class ObjectAtKey(objectContentType: String, checksum: MD5Digest) extends S3CheckResult
   }
 
-  private final case class S3KeyResolvedAgainstPrefix(asKey: S3Key) extends AnyVal
+  private final case class S3KeyResolvedAgainstPrefix(asKey: S3Key)
 
 }
