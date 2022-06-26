@@ -1,6 +1,7 @@
 package au.id.tmm.fetch.aws.s3
 
 import java.net.URI
+import java.util.concurrent.Executor
 
 import au.id.tmm.digest4s.binarycodecs.syntax._
 import au.id.tmm.digest4s.digest.MD5Digest
@@ -14,24 +15,18 @@ import cats.syntax.traverse._
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.client.config.{ClientAsyncConfiguration, SdkAdvancedAsyncClientOption}
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{
-  HeadObjectRequest,
-  HeadObjectResponse,
-  NoSuchKeyException,
-  PutObjectRequest,
-}
+import software.amazon.awssdk.services.s3.model.{HeadObjectRequest, HeadObjectResponse, NoSuchKeyException, PutObjectRequest}
 import sttp.client3.{Response, SttpBackend, _}
 import sttp.model.{HeaderNames, Uri => SttpUri}
 
 import scala.collection.immutable.ArraySeq
-import scala.concurrent.ExecutionContextExecutor
 import scala.jdk.CollectionConverters._
 
 class S3WorkingEnvironment(
   val bucket: S3BucketName,
   val namePrefix: S3Key,
   httpClient: SttpBackend[IO, Any],
-  executionContext: ExecutionContextExecutor,
+  executionContext: Executor,
 ) {
 
   private val s3Client =
