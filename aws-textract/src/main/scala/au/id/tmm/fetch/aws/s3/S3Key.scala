@@ -1,4 +1,4 @@
-package au.id.tmm.fetch.aws
+package au.id.tmm.fetch.aws.s3
 
 import au.id.tmm.collections.NonEmptyArraySeq
 

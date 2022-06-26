@@ -1,11 +1,12 @@
-package au.id.tmm.fetch.aws
+package au.id.tmm.fetch.aws.s3
 
 import java.net.URI
 
-import S3WorkingEnvironment._
 import au.id.tmm.digest4s.binarycodecs.syntax._
 import au.id.tmm.digest4s.digest.MD5Digest
 import au.id.tmm.digest4s.digest.syntax._
+import au.id.tmm.fetch.aws.s3.S3WorkingEnvironment._
+import au.id.tmm.fetch.aws.toIO
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.IO
 import cats.syntax.applicativeError.catsSyntaxApplicativeError
@@ -85,7 +86,7 @@ class S3WorkingEnvironment(
             .build()
         }
 
-        maybeHeadResponse <- toIO(s3Client.headObject(headRequest))
+        maybeHeadResponse <- toIO(IO(s3Client.headObject(headRequest)))
           .map[Option[HeadObjectResponse]](Some(_))
           .recover { case e: NoSuchKeyException =>
             None
@@ -119,7 +120,7 @@ class S3WorkingEnvironment(
 
         putRequestBody = AsyncRequestBody.fromBytes(bytes.unsafeArray)
 
-        _ <- toIO(s3Client.putObject(putRequest, putRequestBody))
+        _ <- toIO(IO(s3Client.putObject(putRequest, putRequestBody)))
       } yield ()
 
     check
@@ -138,17 +139,6 @@ class S3WorkingEnvironment(
 }
 
 object S3WorkingEnvironment {
-  final case class S3BucketName(asString: String) extends AnyVal
-  final case class S3ObjectRef(bucket: S3BucketName, key: S3Key)
-  final case class S3Key(elements: List[String]) extends AnyVal {
-    def resolve(that: S3Key): S3Key = S3Key(this.elements ++ that.elements)
-    def toRaw: String               = this.elements.mkString(sep = "/")
-  }
-
-  object S3Key {
-    def apply(asString: String): S3Key  = S3Key(asString.split('/').toList)
-    def apply(elements: String*): S3Key = S3Key(elements.toList)
-  }
 
   private final case class WebResourceContent(
     contentType: Option[String],

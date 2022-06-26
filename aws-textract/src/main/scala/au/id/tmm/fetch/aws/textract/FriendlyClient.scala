@@ -4,18 +4,20 @@ import java.net.URI
 import java.nio.file.{Files, Path}
 import java.time.Duration
 
+import au.id.tmm.digest4s.binarycodecs.syntax._
+import au.id.tmm.digest4s.digest.syntax._
+import au.id.tmm.digest4s.digest.{MD5Digest, SHA512Digest}
+import au.id.tmm.fetch.aws.s3.S3Key
 import au.id.tmm.fetch.aws.textract.FriendlyClient.JobIdCache.UsingDynamoDb.{
   makeTableIfNoneDefined,
   waitForTableCreated,
 }
 import au.id.tmm.fetch.aws.textract.FriendlyClient.{CachedJobHasExpired, Document, DocumentContent, logger}
 import au.id.tmm.fetch.aws.textract.model.AnalysisResult
-import au.id.tmm.fetch.aws.{RetryEffect, S3Key, toIO}
-import au.id.tmm.digest4s.binarycodecs.syntax._
-import au.id.tmm.digest4s.digest.syntax._
-import au.id.tmm.digest4s.digest.{MD5Digest, SHA512Digest}
+import au.id.tmm.fetch.aws.{RetryEffect, toIO}
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
-import cats.effect.{IO, Resource, Timer}
+import cats.effect.kernel.Clock
+import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxApplicativeError
 import cats.syntax.traverse.toTraverseOps
 import org.slf4j.{Logger, LoggerFactory}
@@ -40,8 +42,6 @@ final class FriendlyClient(
   httpClient: SttpBackend[IO, Any],
   s3Client: S3AsyncClient,
   analysisClient: AwsTextractAnalysisClient,
-)(implicit
-  timer: Timer[IO],
 ) {
 
   def runAnalysisFor(documentLocation: FriendlyClient.Document): IO[AnalysisResult] =
@@ -174,7 +174,7 @@ final class FriendlyClient(
 
       putRequestBody = AsyncRequestBody.fromBytes(documentContent.body.unsafeArray)
 
-      _ <- toIO(s3Client.putObject(putRequest, putRequestBody))
+      _ <- toIO(IO(s3Client.putObject(putRequest, putRequestBody)))
     } yield ()
 
 }
@@ -190,7 +190,7 @@ object FriendlyClient {
     httpClient: SttpBackend[IO, Any],
     executionContext: ExecutionContextExecutor,
   )(implicit
-    timer: Timer[IO],
+    clock: Clock[IO],
   ): Resource[IO, FriendlyClient] =
     for {
       analysisClient <- AwsTextractAnalysisClient()
@@ -244,8 +244,6 @@ object FriendlyClient {
     final class UsingDynamoDb private (
       tableName: String,
       client: DynamoDbClient,
-    )(implicit
-      timer: Timer[IO],
     ) extends JobIdCache {
       override def getFor(documentDigest: SHA512Digest): IO[Option[TextractJobId]] =
         for {
@@ -339,18 +337,16 @@ object FriendlyClient {
     }
 
     object UsingDynamoDb {
-      def apply(tableName: String)(implicit timer: Timer[IO]): Resource[IO, UsingDynamoDb] =
+      def apply(tableName: String): Resource[IO, UsingDynamoDb] =
         for {
           client <- Resource.make(IO(DynamoDbClient.builder().build()))(dynamoDbClient => IO(dynamoDbClient.close()))
           dynamoKeyValueStore <-
-            Resource.liftF(makeTableIfNoneDefined(client, tableName).as(new UsingDynamoDb(tableName, client)))
+            Resource.liftK(makeTableIfNoneDefined(client, tableName).as(new UsingDynamoDb(tableName, client)))
         } yield dynamoKeyValueStore
 
       private def makeTableIfNoneDefined(
         client: DynamoDbClient,
         tableName: String,
-      )(implicit
-        timer: Timer[IO],
       ): IO[Unit] =
         for {
           describeTableRequest <- IO.pure(DescribeTableRequest.builder().tableName(tableName).build())

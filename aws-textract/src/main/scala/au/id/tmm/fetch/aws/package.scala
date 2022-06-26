@@ -1,32 +1,13 @@
 package au.id.tmm.fetch
 
-import java.util.concurrent.{CompletableFuture, CompletionException}
+import java.util.concurrent.CompletableFuture
 
 import cats.effect.IO
+import cats.effect.kernel.Async
 
 package object aws {
 
-  private[aws] def toIO[A](completableFuture: CompletableFuture[A]): IO[A] =
-//    IO.cancelable[A] { cb: (Either[Throwable, A] => Unit) =>
-//      completableFuture.handle[Unit] { (a: A, e: Throwable) =>
-//        (a, e) match {
-//          case (null, e: CancellationException) => ()
-//          case (null, e: CompletionException)   => cb(Left(e.getCause))
-//          case (null, e)                        => cb(Left(e))
-//          case (a, _)                           => cb(Right(a))
-//        }
-//      }
-//
-//      IO(completableFuture.cancel(true))
-//    }
-    IO.async[A] { cb: (Either[Throwable, A] => Unit) =>
-      completableFuture.handle[Unit] { (a: A, e: Throwable) =>
-        (a, e) match {
-          case (null, e: CompletionException) => cb(Left(e.getCause))
-          case (null, e)                      => cb(Left(e))
-          case (a, _)                         => cb(Right(a))
-        }
-      }
-    }
+  private[aws] def toIO[A](completableFuture: IO[CompletableFuture[A]]): IO[A] =
+    Async[IO].fromCompletableFuture(completableFuture)
 
 }

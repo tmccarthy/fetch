@@ -3,7 +3,7 @@ package au.id.tmm.fetch.aws
 import java.time.{Duration, Instant}
 import java.util.concurrent.TimeUnit
 
-import cats.effect.{IO, Timer}
+import cats.effect.IO
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -22,16 +22,14 @@ object RetryEffect {
     initialDelay: Duration,
     factor: Long,
     maxWait: Duration,
-  )(implicit
-    timer: Timer[IO],
   ): IO[A] = {
     def go(
       t0: Instant,
       delay: Duration,
     ): IO[A] =
       for {
-        _   <- Timer[IO].sleep(FiniteDuration(delay.toMillis, TimeUnit.MILLISECONDS))
-        now <- Timer[IO].clock.instantNow
+        _   <- IO.sleep(FiniteDuration(delay.toMillis, TimeUnit.MILLISECONDS))
+        now <- IO.realTimeInstant
         elapsed = Duration.between(t0, now)
 
         result <-
@@ -51,7 +49,7 @@ object RetryEffect {
             }
       } yield result
 
-    Timer[IO].clock.instantNow.flatMap { t0 =>
+    IO.realTimeInstant.flatMap { t0 =>
       go(t0, initialDelay)
     }
   }

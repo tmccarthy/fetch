@@ -7,7 +7,7 @@ import au.id.tmm.fetch.aws.textract.AwsTextractAnalysisClient.logger
 import au.id.tmm.fetch.aws.textract.model.AnalysisResult
 import au.id.tmm.fetch.aws.textract.parsing.Parse
 import au.id.tmm.utilities.errors.GenericException
-import cats.effect.{IO, Resource, Timer}
+import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxApplicativeError
 import org.slf4j.{Logger, LoggerFactory}
 import software.amazon.awssdk.services.textract.model.{GetDocumentAnalysisRequest, InvalidJobIdException}
@@ -17,8 +17,6 @@ import scala.collection.immutable.ArraySeq
 
 class AwsTextractAnalysisClient private (
   textractClient: sdk.TextractClient,
-)(implicit
-  timer: Timer[IO],
 ) {
 
   def run(
@@ -125,7 +123,7 @@ class AwsTextractAnalysisClient private (
 object AwsTextractAnalysisClient {
   private val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  def apply()(implicit timer: Timer[IO]): Resource[IO, AwsTextractAnalysisClient] =
+  def apply(): Resource[IO, AwsTextractAnalysisClient] =
     for {
       sdkClient <- Resource.make(IO(sdk.TextractClient.builder().build()))(sdkClient => IO(sdkClient.close()))
     } yield new AwsTextractAnalysisClient(sdkClient)
