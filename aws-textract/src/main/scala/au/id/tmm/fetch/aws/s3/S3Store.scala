@@ -15,7 +15,7 @@ import cats.syntax.traverse._
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.client.config.{ClientAsyncConfiguration, SdkAdvancedAsyncClientOption}
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{HeadObjectRequest, HeadObjectResponse, NoSuchKeyException, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, HeadObjectResponse, NoSuchKeyException, PutObjectRequest}
 import sttp.client3.Response
 import sttp.model.HeaderNames
 
@@ -59,7 +59,14 @@ class S3Store private (
       }
     } yield makeObjectRefFor(resolvedKey)
 
-  override def drop(k: S3Key): IO[Unit] = ???
+  override def drop(k: S3Key): IO[Unit] = {
+    val request = DeleteObjectRequest.builder()
+      .bucket(bucket.asString)
+      .key(resolve(k).asKey.toRaw)
+      .build()
+
+    toIO(IO(s3Client.deleteObject(request))).as(())
+  }
 
   private def resolve(givenKey: S3Key): S3KeyResolvedAgainstPrefix = namePrefix match {
     case Some(prefix) => S3KeyResolvedAgainstPrefix(prefix.resolve(givenKey))
