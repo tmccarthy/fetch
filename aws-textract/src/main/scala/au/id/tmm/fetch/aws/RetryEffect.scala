@@ -17,14 +17,6 @@ object RetryEffect {
     final case class FailedFinished(t: Throwable) extends Result[Nothing]
   }
 
-  @deprecated
-  def exponentialRetry[A](
-    op: IO[Result[A]],
-    initialDelay: Duration,
-    factor: Long,
-    maxWait: Duration,
-  ): IO[A] = exponentialRetry(initialDelay, factor, maxWait)(op)
-
   def exponentialRetry[A](
     initialDelay: Duration,
     factor: Long,

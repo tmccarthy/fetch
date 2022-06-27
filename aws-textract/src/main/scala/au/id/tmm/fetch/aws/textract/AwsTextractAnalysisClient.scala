@@ -69,7 +69,11 @@ class AwsTextractAnalysisClient private (
           .build(),
       )
       getAnalysisResponse <- RetryEffect.exponentialRetry(
-        op = for {
+        initialDelay = Duration.ofSeconds(10),
+        factor = 1,
+        maxWait = Duration.ofMinutes(2),
+      ) {
+        for {
           responseOrInvalidJob <-
             IO(textractClient.getDocumentAnalysis(getAnalysisRequest)).attemptNarrow[InvalidJobIdException]
           response <- responseOrInvalidJob match {
@@ -79,15 +83,12 @@ class AwsTextractAnalysisClient private (
                 case sdk.model.JobStatus.SUCCEEDED   => IO.pure(RetryEffect.Result.Finished(response))
                 case sdk.model.JobStatus.IN_PROGRESS => IO.raiseError(GenericException("Job in progress"))
                 case sdk.model.JobStatus.FAILED | sdk.model.JobStatus.PARTIAL_SUCCESS |
-                    sdk.model.JobStatus.UNKNOWN_TO_SDK_VERSION =>
+                     sdk.model.JobStatus.UNKNOWN_TO_SDK_VERSION =>
                   IO.pure(RetryEffect.Result.FailedFinished(GenericException("Job failed")))
               }
           }
-        } yield response,
-        initialDelay = Duration.ofSeconds(10),
-        factor = 1,
-        maxWait = Duration.ofMinutes(2),
-      )
+        } yield response
+      }
     } yield getAnalysisResponse
 
   private def readRemaining(

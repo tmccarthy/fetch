@@ -61,6 +61,9 @@ lazy val awsTextract = project
   .settings(settingsForSubprojectCalled("aws-textract"))
   .dependsOn(cache) // TODO this dependency tree brings in way too much given what is needed. Might need reconsidering
   .settings(
+    resolvers += "aws-dynamodb-local" at "https://s3-us-west-2.amazonaws.com/dynamodb-local/release/",
+  )
+  .settings(
     libraryDependencies += "org.typelevel"                   %% "cats-effect"                    % catsEffectVersion,
     libraryDependencies += "co.fs2"                          %% "fs2-core"                       % fs2Version,
     libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "0.0.1",
@@ -77,4 +80,7 @@ lazy val awsTextract = project
     libraryDependencies += "me.xdrop"                         % "fuzzywuzzy"                     % "1.3.1",
     libraryDependencies += "org.slf4j"                        % "slf4j-api"                      % slf4jVersion,
     libraryDependencies += "org.slf4j"                        % "slf4j-simple"                   % slf4jVersion % Runtime,
+    libraryDependencies += "app.cash.tempest"                 % "tempest2-testing-jvm"           % "1.5.2",
+//    libraryDependencies += "com.amazonaws"                    % "DynamoDBLocal"                  % "1.15.0"     % Test,
+    libraryDependencies += "org.typelevel"                   %% "munit-cats-effect-3"            % "1.0.5"      % Test,
   )

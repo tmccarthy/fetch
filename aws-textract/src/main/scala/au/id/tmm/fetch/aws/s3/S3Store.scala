@@ -1,7 +1,5 @@
 package au.id.tmm.fetch.aws.s3
 
-import java.util.concurrent.Executor
-
 import au.id.tmm.digest4s.binarycodecs.syntax._
 import au.id.tmm.digest4s.digest.MD5Digest
 import au.id.tmm.digest4s.digest.syntax._
@@ -13,9 +11,8 @@ import cats.effect.{IO, Resource}
 import cats.syntax.applicativeError.catsSyntaxApplicativeError
 import cats.syntax.traverse._
 import software.amazon.awssdk.core.async.AsyncRequestBody
-import software.amazon.awssdk.core.client.config.{ClientAsyncConfiguration, SdkAdvancedAsyncClientOption}
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, HeadObjectResponse, NoSuchKeyException, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model._
 import sttp.client3.Response
 import sttp.model.HeaderNames
 

@@ -379,11 +379,12 @@ object FriendlyClient {
                   IO(client.createTable(createTableRequest)) // TODO need to wait for the able creation to complete
 
                 _ <- RetryEffect.exponentialRetry(
-                  op = waitForTableCreated(client, tableName),
                   initialDelay = Duration.ofSeconds(10),
                   factor = 1,
                   maxWait = Duration.ofMinutes(1),
-                )
+                ) {
+                  waitForTableCreated(client, tableName)
+                }
 
               } yield ()
             }

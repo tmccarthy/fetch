@@ -1,5 +1,6 @@
 package au.id.tmm.fetch.aws.dynamodb
 
+import java.net.URI
 import java.time.Duration
 
 import au.id.tmm.fetch.aws.{RetryEffect, makeClientAsyncConfiguration, toIO}
@@ -9,7 +10,7 @@ import cats.effect.{IO, Resource}
 import io.circe.Json
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.TableStatus.CREATING
-import software.amazon.awssdk.services.dynamodb.model.{AttributeDefinition, BillingMode, CreateTableRequest, DescribeTableRequest, DescribeTableResponse, KeySchemaElement, KeyType, ResourceNotFoundException, ScalarAttributeType, TableStatus}
+import software.amazon.awssdk.services.dynamodb.model._
 
 final class DynamoStore private (
   client: DynamoDbAsyncClient,
@@ -23,9 +24,14 @@ final class DynamoStore private (
 
 object DynamoStore {
 
-  def apply(tableName: TableName): Resource[IO, DynamoStore] =
+  def apply(tableName: TableName): Resource[IO, DynamoStore] = apply(tableName, None)
+
+  /**
+    * This is only here for testing
+    */
+  def apply(tableName: TableName, overrideDynamoEndpoint: Option[URI]): Resource[IO, DynamoStore] =
     for {
-      client <- dynamoClientResource
+      client <- dynamoClientResource(overrideDynamoEndpoint)
       _ <- Resource.liftK {
         for {
           tableExists <- tableExists(client, tableName)
@@ -34,13 +40,19 @@ object DynamoStore {
       }
     } yield new DynamoStore(client, tableName)
 
-  private val dynamoClientResource: Resource[IO, DynamoDbAsyncClient] =
+  private def dynamoClientResource(overrideDynamoEndpoint: Option[URI]): Resource[IO, DynamoDbAsyncClient] =
     Resource.fromAutoCloseable {
       for {
         clientAsyncConfig <- makeClientAsyncConfiguration
-      } yield DynamoDbAsyncClient.builder()
-        .asyncConfiguration(clientAsyncConfig)
-        .build()
+      } yield {
+        val clientBuilder = DynamoDbAsyncClient.builder()
+
+        overrideDynamoEndpoint.foreach(clientBuilder.endpointOverride)
+
+        clientBuilder
+          .asyncConfiguration(clientAsyncConfig)
+          .build()
+      }
     }
 
   private def tableExists(client: DynamoDbAsyncClient, tableName: TableName): IO[Boolean] =
