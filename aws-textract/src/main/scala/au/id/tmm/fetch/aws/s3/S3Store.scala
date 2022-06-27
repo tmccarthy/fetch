@@ -6,7 +6,7 @@ import au.id.tmm.digest4s.binarycodecs.syntax._
 import au.id.tmm.digest4s.digest.MD5Digest
 import au.id.tmm.digest4s.digest.syntax._
 import au.id.tmm.fetch.aws.s3.S3Store.{S3CheckResult, S3KeyResolvedAgainstPrefix, Source}
-import au.id.tmm.fetch.aws.toIO
+import au.id.tmm.fetch.aws.{makeClientAsyncConfiguration, toIO}
 import au.id.tmm.fetch.cache.KVStore
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
 import cats.effect.{IO, Resource}
@@ -15,13 +15,7 @@ import cats.syntax.traverse._
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.core.client.config.{ClientAsyncConfiguration, SdkAdvancedAsyncClientOption}
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{
-  DeleteObjectRequest,
-  HeadObjectRequest,
-  HeadObjectResponse,
-  NoSuchKeyException,
-  PutObjectRequest,
-}
+import software.amazon.awssdk.services.s3.model.{DeleteObjectRequest, HeadObjectRequest, HeadObjectResponse, NoSuchKeyException, PutObjectRequest}
 import sttp.client3.Response
 import sttp.model.HeaderNames
 
@@ -149,38 +143,15 @@ object S3Store {
     */
   def apply(bucket: S3BucketName, namePrefix: Option[S3Key]): Resource[IO, S3Store] =
     for {
-      ec <- Resource.liftK(IO.executionContext)
-      executor = ec match {
-        case executor: Executor => Some(executor)
-        case _                  => None
-      }
-      s3Store <- S3Store(bucket, namePrefix, executor)
-    } yield s3Store
+      s3Client <- s3ClientResource
+    } yield new S3Store(bucket, namePrefix, s3Client)
 
-  def apply(
-    bucket: S3BucketName,
-    namePrefix: Option[S3Key],
-    executor: Option[Executor],
-  ): Resource[IO, S3Store] =
-    s3Client(executor).map(s3Client => new S3Store(bucket, namePrefix, s3Client))
-
-  private def s3Client(executor: Option[Executor]): Resource[IO, S3AsyncClient] =
-    Resource.fromAutoCloseable(IO {
-      val clientAsyncConfigBuilder = ClientAsyncConfiguration
-        .builder()
-
-      executor.foreach { executor =>
-        clientAsyncConfigBuilder.advancedOption(SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR, executor)
-      }
-
-      S3AsyncClient
-        .builder()
-        .asyncConfiguration(
-          clientAsyncConfigBuilder
-            .build(),
-        )
-        .build()
-    })
+  private val s3ClientResource: Resource[IO, S3AsyncClient] =
+    Resource.fromAutoCloseable {
+      for {
+        clientAsyncConfiguration <- makeClientAsyncConfiguration
+      } yield S3AsyncClient.builder().asyncConfiguration(clientAsyncConfiguration).build()
+    }
 
   final case class Source(
     bytes: ArraySeq.ofByte, // TODO not sure about the type here
