@@ -21,7 +21,9 @@ object RetryEffect {
     initialDelay: Duration,
     factor: Long,
     maxWait: Duration,
-  )(op: IO[Result[A]]): IO[A] = {
+  )(
+    op: IO[Result[A]],
+  ): IO[A] = {
     def go(
       t0: Instant,
       delay: Duration,

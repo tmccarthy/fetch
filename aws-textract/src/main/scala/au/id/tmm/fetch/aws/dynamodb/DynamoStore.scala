@@ -16,10 +16,10 @@ final class DynamoStore private (
   client: DynamoDbAsyncClient,
   tableName: TableName,
 ) extends KVStore[IO, String, Json, Json] {
-  override def get(k: String): IO[Option[Json]] = ???
-  override def contains(k: String): IO[Boolean] = ???
+  override def get(k: String): IO[Option[Json]]  = ???
+  override def contains(k: String): IO[Boolean]  = ???
   override def put(k: String, v: Json): IO[Json] = ???
-  override def drop(k: String): IO[Unit] = ???
+  override def drop(k: String): IO[Unit]         = ???
 }
 
 object DynamoStore {
@@ -35,7 +35,7 @@ object DynamoStore {
       _ <- Resource.liftK {
         for {
           tableExists <- tableExists(client, tableName)
-          _ <- if (tableExists) IO.unit else makeTable(client, tableName)
+          _           <- if (tableExists) IO.unit else makeTable(client, tableName)
         } yield ()
       }
     } yield new DynamoStore(client, tableName)
@@ -57,9 +57,9 @@ object DynamoStore {
 
   private def tableExists(client: DynamoDbAsyncClient, tableName: TableName): IO[Boolean] =
     describeTable(client, tableName).attempt.flatMap {
-      case Right(_) => IO.pure(true)
+      case Right(_)                           => IO.pure(true)
       case Left(_: ResourceNotFoundException) => IO.pure(false)
-      case Left(e) => IO.raiseError(e)
+      case Left(e)                            => IO.raiseError(e)
     }
 
   private def makeTable(client: DynamoDbAsyncClient, tableName: TableName): IO[Unit] =

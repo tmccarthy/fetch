@@ -81,6 +81,5 @@ lazy val awsTextract = project
     libraryDependencies += "org.slf4j"                        % "slf4j-api"                      % slf4jVersion,
     libraryDependencies += "org.slf4j"                        % "slf4j-simple"                   % slf4jVersion % Runtime,
     libraryDependencies += "app.cash.tempest"                 % "tempest2-testing-jvm"           % "1.5.2",
-//    libraryDependencies += "com.amazonaws"                    % "DynamoDBLocal"                  % "1.15.0"     % Test,
     libraryDependencies += "org.typelevel"                   %% "munit-cats-effect-3"            % "1.0.5"      % Test,
   )

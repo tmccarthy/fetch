@@ -14,7 +14,8 @@ package object aws {
   private[aws] val makeClientAsyncConfiguration: IO[ClientAsyncConfiguration] =
     IO.executionContext.map {
       case executor: Executor =>
-        ClientAsyncConfiguration.builder()
+        ClientAsyncConfiguration
+          .builder()
           .advancedOption(SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR, executor)
           .build()
       case _ => ClientAsyncConfiguration.builder().build()
