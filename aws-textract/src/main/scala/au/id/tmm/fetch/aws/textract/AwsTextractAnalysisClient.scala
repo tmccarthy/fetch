@@ -1,11 +1,10 @@
 package au.id.tmm.fetch.aws.textract
 
 import java.time.Duration
-
-import au.id.tmm.fetch.aws.RetryEffect
 import au.id.tmm.fetch.aws.textract.AwsTextractAnalysisClient.logger
 import au.id.tmm.fetch.aws.textract.model.AnalysisResult
 import au.id.tmm.fetch.aws.textract.parsing.Parse
+import au.id.tmm.fetch.retries.RetryEffect
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxApplicativeError

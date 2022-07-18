@@ -3,8 +3,9 @@ package au.id.tmm.fetch.aws.dynamodb
 import java.net.URI
 import java.time.Duration
 
-import au.id.tmm.fetch.aws.{RetryEffect, makeClientAsyncConfiguration, toIO}
+import au.id.tmm.fetch.aws.{makeClientAsyncConfiguration, toIO}
 import au.id.tmm.fetch.cache.KVStore
+import au.id.tmm.fetch.retries.RetryEffect
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.{IO, Resource}
 import io.circe.Json

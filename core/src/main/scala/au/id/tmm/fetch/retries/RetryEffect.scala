@@ -1,4 +1,4 @@
-package au.id.tmm.fetch.aws
+package au.id.tmm.fetch.retries
 
 import java.time.{Duration, Instant}
 import java.util.concurrent.TimeUnit
@@ -7,7 +7,6 @@ import cats.effect.IO
 
 import scala.concurrent.duration.FiniteDuration
 
-// TODO make this a utility somewhere
 object RetryEffect {
 
   sealed trait Result[+A]
