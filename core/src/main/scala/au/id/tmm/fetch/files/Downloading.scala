@@ -1,11 +1,22 @@
 package au.id.tmm.fetch.files
 
 import java.io.InputStream
-import java.nio.file.{Files, Path, StandardCopyOption}
+import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
 
 import cats.effect.IO
 
+import scala.collection.immutable.ArraySeq
+
 object Downloading {
+
+  def bytesToPath(
+    destination: Path,
+    replaceExisting: Boolean,
+    bytes: ArraySeq.ofByte,
+  ): IO[Unit] =
+    withReplaceExistingCheck(destination, replaceExisting)(IO {
+      Files.write(destination, bytes.unsafeArray, StandardOpenOption.CREATE)
+    })
 
   def inputStreamToPath(
     destination: Path,

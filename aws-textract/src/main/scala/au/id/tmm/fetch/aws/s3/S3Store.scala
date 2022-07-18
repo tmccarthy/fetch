@@ -14,7 +14,7 @@ import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.services.s3.S3AsyncClient
 import software.amazon.awssdk.services.s3.model._
 import sttp.client3.Response
-import sttp.model.HeaderNames
+import sttp.model.{HeaderNames, MediaType}
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
@@ -121,7 +121,7 @@ class S3Store private (
       .builder()
       .bucket(bucket.asString)
       .key(key.asKey.toRaw)
-      .contentType(source.contentType.orNull)
+      .contentType(source.contentType.map(_.toString).orNull)
       .contentMD5(sourceMd5.asBase64String)
       .build()
 
@@ -152,7 +152,7 @@ object S3Store {
 
   final case class Source(
     bytes: ArraySeq.ofByte, // TODO not sure about the type here
-    contentType: Option[String],
+    contentType: Option[MediaType],
   )
 
   object Source {
@@ -164,7 +164,9 @@ object S3Store {
           .map(errorResponse =>
             GenericException(s"Http response code was ${response.code.code}, message was $errorResponse"),
           )
-        contentType = response.header(HeaderNames.ContentType)
+        contentType = response
+          .header(HeaderNames.ContentType)
+          .flatMap(s => MediaType.parse(s).toOption)
       } yield Source(bytes, contentType)
   }
 

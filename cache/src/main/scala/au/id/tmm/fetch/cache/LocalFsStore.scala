@@ -47,6 +47,8 @@ class LocalFsStore private (private val directory: Path) extends KVStore[IO, Pat
           Downloading.inputStreamToPath(resolvedPath, replaceExisting = true, makeIS)
         case BytesSource.OfFs2Stream(stream) =>
           Downloading.fs2StreamToPath(stream, resolvedPath, replaceExisting = true)
+        case BytesSource.Pure(bytes) =>
+          Downloading.bytesToPath(resolvedPath, replaceExisting = true, bytes)
       }
     } yield resolvedPath
 

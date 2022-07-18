@@ -21,7 +21,7 @@ class AwsTextractAnalysisClient private (
 
   def run(
     input: sdk.model.DocumentLocation,
-    output: sdk.model.OutputConfig,
+    output: Option[sdk.model.OutputConfig],
   ): IO[AnalysisResult] =
     for {
       jobId          <- startAnalysis(input, output)
@@ -30,7 +30,7 @@ class AwsTextractAnalysisClient private (
 
   private def startAnalysis(
     input: sdk.model.DocumentLocation,
-    output: sdk.model.OutputConfig,
+    output: Option[sdk.model.OutputConfig],
   ): IO[TextractJobId] =
     for {
       startAnalysisRequest <- IO.pure(makeStartAnalysisRequest(input, output))
@@ -41,7 +41,7 @@ class AwsTextractAnalysisClient private (
 
   private def makeStartAnalysisRequest(
     input: sdk.model.DocumentLocation,
-    output: sdk.model.OutputConfig,
+    output: Option[sdk.model.OutputConfig],
   ): sdk.model.StartDocumentAnalysisRequest =
     sdk.model.StartDocumentAnalysisRequest
       .builder()
@@ -50,7 +50,7 @@ class AwsTextractAnalysisClient private (
         sdk.model.FeatureType.FORMS,
         sdk.model.FeatureType.TABLES,
       )
-      .outputConfig(output)
+      .outputConfig(output.orNull)
       .build()
 
   def getAnalysisResult(jobId: TextractJobId): IO[AnalysisResult] =

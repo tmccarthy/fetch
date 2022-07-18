@@ -1,413 +1,77 @@
 package au.id.tmm.fetch.aws.textract
 
-import java.net.URI
-import java.nio.file.{Files, Path}
-import java.time.Duration
-
-import au.id.tmm.digest4s.binarycodecs.syntax._
-import au.id.tmm.digest4s.digest.syntax._
-import au.id.tmm.digest4s.digest.{MD5Digest, SHA512Digest}
-import au.id.tmm.fetch.aws.s3.S3Key
-import au.id.tmm.fetch.aws.textract.FriendlyClient.JobIdCache.UsingDynamoDb.{
-  makeTableIfNoneDefined,
-  waitForTableCreated,
-}
-import au.id.tmm.fetch.aws.textract.FriendlyClient.{CachedJobHasExpired, Document, DocumentContent, logger}
+import au.id.tmm.digest4s.digest.SHA512Digest
+import au.id.tmm.digest4s.syntax._
+import au.id.tmm.fetch.aws.s3.{S3Key, S3ObjectRef, S3Store}
 import au.id.tmm.fetch.aws.textract.model.AnalysisResult
-import au.id.tmm.fetch.aws.{RetryEffect, toIO}
-import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
-import cats.effect.kernel.Clock
-import cats.effect.{IO, Resource}
-import cats.implicits.catsSyntaxApplicativeError
-import cats.syntax.traverse.toTraverseOps
-import org.slf4j.{Logger, LoggerFactory}
-import software.amazon.awssdk.core.async.AsyncRequestBody
-import software.amazon.awssdk.core.client.config.{ClientAsyncConfiguration, SdkAdvancedAsyncClientOption}
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model._
-import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.PutObjectRequest
-import software.amazon.awssdk.services.textract.model.{DocumentLocation, InvalidJobIdException, OutputConfig, S3Object}
-import sttp.client3._
-import sttp.model.{HeaderNames, Uri => SttpUri}
+import au.id.tmm.fetch.cache.Cache
+import cats.effect.IO
+import org.apache.commons.io.FilenameUtils
+import software.amazon.awssdk.services.{textract => sdk}
+import sttp.model.MediaType
 
 import scala.collection.immutable.ArraySeq
-import scala.concurrent.ExecutionContextExecutor
-import scala.jdk.CollectionConverters._
 
 final class FriendlyClient(
-  cache: FriendlyClient.JobIdCache,
-  s3Bucket: String,
-  s3WorkingDirectoryPrefix: S3Key,
-  httpClient: SttpBackend[IO, Any],
-  s3Client: S3AsyncClient,
+  s3Cache: Cache[IO, S3Key, S3Store.Source, S3ObjectRef],
+  analysisCache: Cache[IO, SHA512Digest, AnalysisResult, AnalysisResult],
   analysisClient: AwsTextractAnalysisClient,
 ) {
 
-  def runAnalysisFor(documentLocation: FriendlyClient.Document): IO[AnalysisResult] =
-    for {
-      content       <- contentOf(documentLocation)
-      possibleJobId <- cache.getFor(content.sha512Digest)
-      result <- possibleJobId match {
-        case Some(jobId) =>
-          for {
-            _                  <- IO(logger.info(s"Found cached job for document $documentLocation. JobId ${jobId.asString}"))
-            jobResultOrExpired <- retrieveCachedJobIdResult(jobId)
-            jobResult <- jobResultOrExpired.map(IO.pure).getOrElse {
-              for {
-                _              <- IO(logger.info(s"Cached job for document $documentLocation has expired. Rerunning"))
-                _              <- cache.drop(content.sha512Digest)
-                analysisResult <- runAnalysis(content)
-                _              <- cache.update(content.sha512Digest, analysisResult.jobId)
-              } yield analysisResult
+  def runAnalysisFor(document: FriendlyClient.Document): IO[AnalysisResult] = {
+    val digest: SHA512Digest = document.bytes.sha512
+
+    analysisCache.get(digest) {
+      for {
+        uploadedDocumentLocation: S3ObjectRef <- s3Cache.get(makeS3KeyFor(digest, document)) {
+          IO.pure {
+            document.bytes match {
+              case bytes: ArraySeq.ofByte => S3Store.Source(bytes, document.mediaType)
+              case bytes => {
+                val bytesArray = new Array[Byte](bytes.size)
+
+                //noinspection ScalaUnusedExpression
+                bytes.copyToArray(bytesArray)
+
+                S3Store.Source(new ArraySeq.ofByte(bytesArray), document.mediaType)
+              }
             }
-          } yield jobResult
-        case None =>
-          for {
-            analysisResult <- runAnalysis(content)
-            _              <- cache.update(content.sha512Digest, analysisResult.jobId)
-          } yield analysisResult
-      }
-    } yield result
-
-  private def contentOf(document: Document): IO[DocumentContent] =
-    document match {
-      case local: Document.Local   => contentOf(local)
-      case remote: Document.Remote => contentOf(remote)
-    }
-
-  private def contentOf(localDocument: Document.Local): IO[DocumentContent] =
-    IO(Files.readAllBytes(localDocument.path)).map { bytes =>
-      DocumentContent(
-        localDocument.path.getFileName.toString,
-        new ArraySeq.ofByte(bytes),
-        contentType = None,
-        bytes.sha512,
-        bytes.md5,
-      )
-    }
-  private def contentOf(remoteDocument: Document.Remote): IO[DocumentContent] =
-    for {
-      response: Response[Either[String, Array[Byte]]] <-
-        basicRequest
-          .response(asByteArray)
-          .get(SttpUri(remoteDocument.uri))
-          .send(httpClient)
-
-      contentType: Option[String] = response.header(HeaderNames.ContentType)
-
-      bytes <- IO.fromEither {
-        response.body
-          .map(bytes => new ArraySeq.ofByte(bytes))
-          .left
-          .map(errorResponse =>
-            GenericException(s"Http response code was ${response.code.code}, message was $errorResponse"),
-          )
-      }
-
-      fileName <- IO.fromEither {
-        ExceptionOr.catchIn {
-          Path.of(remoteDocument.uri.getPath).getFileName.toString
+          }
         }
-      }
-
-    } yield DocumentContent(
-      fileName,
-      bytes,
-      contentType,
-      bytes.sha512,
-      bytes.md5,
-    )
-
-  private def retrieveCachedJobIdResult(jobId: TextractJobId): IO[Either[CachedJobHasExpired.type, AnalysisResult]] =
-    analysisClient.getAnalysisResult(jobId).attemptNarrow[InvalidJobIdException].map {
-      case Left(e)       => Left(CachedJobHasExpired)
-      case Right(result) => Right(result)
+        sdkDocumentLocation = asSdkDocumentLocation(uploadedDocumentLocation)
+        analysisResult <- analysisClient.run(
+          sdkDocumentLocation,
+          None,
+        ) // TODO configure whether to run the full analysis with tables/forms
+      } yield analysisResult
     }
+  }
 
-  private def runAnalysis(
-    documentContent: DocumentContent,
-  ): IO[AnalysisResult] =
-    for {
-      s3DirectoryForFile <- IO.pure {
-        s3WorkingDirectoryPrefix
-          .resolve(S3Key(documentContent.sha512Digest.asHexString))
-      }
+  private def makeS3KeyFor(
+    digest: SHA512Digest,
+    document: FriendlyClient.Document,
+  ): S3Key = S3Key((document.fileNameHint.map(FilenameUtils.getName).toList :+ digest.asHexString).mkString("-"))
 
-      s3UploadLocation =
-        s3DirectoryForFile
-          .resolve(S3Key(documentContent.fileName))
-
-      textractOutputDirectory = s3DirectoryForFile.resolve("textract_output")
-
-      sdkDocumentLocation =
-        DocumentLocation
+  private def asSdkDocumentLocation(s3ObjectRef: S3ObjectRef): sdk.model.DocumentLocation =
+    sdk.model.DocumentLocation
+      .builder()
+      .s3Object(
+        sdk.model.S3Object
           .builder()
-          .s3Object(S3Object.builder().bucket(s3Bucket).name(s3UploadLocation.toRaw).build())
-          .build()
-
-      sdkOutputLocation =
-        OutputConfig
-          .builder()
-          .s3Bucket(s3Bucket)
-          .s3Prefix(textractOutputDirectory.toRaw)
-          .build()
-
-      _      <- uploadToS3(documentContent, s3UploadLocation)
-      result <- analysisClient.run(sdkDocumentLocation, sdkOutputLocation)
-
-    } yield result
-
-  private def uploadToS3(
-    documentContent: DocumentContent,
-    key: S3Key,
-  ) =
-    for {
-      putRequest <- IO.pure {
-        PutObjectRequest
-          .builder()
-          .bucket(s3Bucket)
-          .key(key.toRaw)
-          .contentMD5(documentContent.md5Digest.asBase64String)
-          .build()
-      }
-
-      putRequestBody = AsyncRequestBody.fromBytes(documentContent.body.unsafeArray)
-
-      _ <- toIO(IO(s3Client.putObject(putRequest, putRequestBody)))
-    } yield ()
+          .bucket(s3ObjectRef.bucket.asString)
+          .name(s3ObjectRef.key.toRaw)
+          .build(),
+      )
+      .build()
 
 }
 
 object FriendlyClient {
 
-  private val logger: Logger = LoggerFactory.getLogger(getClass)
-
-  def apply(
-    cache: JobIdCache,
-    s3Bucket: String,
-    s3WorkingDirectoryPrefix: S3Key,
-    httpClient: SttpBackend[IO, Any],
-    executionContext: ExecutionContextExecutor,
-  )(implicit
-    clock: Clock[IO],
-  ): Resource[IO, FriendlyClient] =
-    for {
-      analysisClient <- AwsTextractAnalysisClient()
-      s3Client <- Resource.make(
-        IO {
-          S3AsyncClient
-            .builder()
-            .asyncConfiguration(
-              ClientAsyncConfiguration
-                .builder()
-                .advancedOption(SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR, executionContext)
-                .build(),
-            )
-            .build()
-        },
-      )(client => IO(client.close()))
-    } yield new FriendlyClient(cache, s3Bucket, s3WorkingDirectoryPrefix, httpClient, s3Client, analysisClient)
-
-  sealed trait Document
-
-  object Document {
-    final case class Local(path: Path) extends Document
-    final case class Remote(uri: URI)  extends Document
-
-    object Local {
-      def apply(path: => Path): IO[Local] = IO(new Local(path))
-    }
-
-  }
-
-  final case class DocumentContent(
-    fileName: String,
-    body: ArraySeq.ofByte,
-    contentType: Option[String],
-    sha512Digest: SHA512Digest,
-    md5Digest: MD5Digest,
+  final case class Document(
+    bytes: ArraySeq[Byte],
+    mediaType: Option[MediaType],
+    fileNameHint: Option[String],
   )
-
-  trait JobIdCache {
-    def getFor(documentDigest: SHA512Digest): IO[Option[TextractJobId]]
-
-    def update(documentDigest: SHA512Digest, textractJobId: TextractJobId): IO[Unit]
-
-    def drop(documentDigest: SHA512Digest): IO[Unit]
-
-    def clear: IO[Unit]
-  }
-
-  object JobIdCache {
-
-    final class UsingDynamoDb private (
-      tableName: String,
-      client: DynamoDbClient,
-    ) extends JobIdCache {
-      override def getFor(documentDigest: SHA512Digest): IO[Option[TextractJobId]] =
-        for {
-          request <- IO.pure {
-            GetItemRequest
-              .builder()
-              .tableName(tableName)
-              .key(
-                Map(
-                  "documentDigest" -> AttributeValue
-                    .builder()
-                    .s(documentDigest.asHexString)
-                    .build(),
-                ).asJava,
-              )
-              .build()
-          }
-
-          response <- IO(client.getItem(request))
-
-          maybeAttributeValue <- Option(response.item())
-            .filterNot(_.isEmpty)
-            .traverse { javaMap =>
-              IO.fromEither {
-                javaMap.asScala
-                  .get("jobId")
-                  .toRight(GenericException("No key for item"))
-              }
-            }
-
-          rawJobId <- IO.fromEither {
-            maybeAttributeValue.traverse { attributeValue =>
-              for {
-                s <- Option(attributeValue.s).toRight(GenericException("Value wasn't string"))
-              } yield s
-            }
-          }
-
-          jobId <- IO.fromEither(rawJobId.traverse(TextractJobId.fromString))
-
-        } yield jobId
-
-      override def update(documentDigest: SHA512Digest, textractJobId: TextractJobId): IO[Unit] =
-        for {
-          request <- IO.pure(
-            PutItemRequest
-              .builder()
-              .tableName(tableName)
-              .item(
-                Map(
-                  "documentDigest" -> AttributeValue.builder().s(documentDigest.asHexString).build(),
-                  "jobId"          -> AttributeValue.builder().s(textractJobId.asString).build(),
-                ).asJava,
-              )
-              .build(),
-          )
-
-          response <- IO(client.putItem(request))
-        } yield ()
-
-      override def clear: IO[Unit] =
-        for {
-          deleteTableRequest <- IO.pure(
-            DeleteTableRequest.builder().tableName(tableName).build(),
-          )
-
-          _ <- IO(client.deleteTable(deleteTableRequest))
-
-          _ <- IO(logger.info(s"Deleted table $tableName"))
-
-          _ <- makeTableIfNoneDefined(client, tableName)
-          _ <- waitForTableCreated(client, tableName)
-        } yield ()
-
-      override def drop(documentDigest: SHA512Digest): IO[Unit] =
-        for {
-          request <- IO.pure(
-            DeleteItemRequest
-              .builder()
-              .tableName(tableName)
-              .key(
-                Map(
-                  "documentDigest" -> AttributeValue.builder().s(documentDigest.asHexString).build(),
-                ).asJava,
-              )
-              .build(),
-          )
-
-          _ <- IO(client.deleteItem(request))
-        } yield ()
-    }
-
-    object UsingDynamoDb {
-      def apply(tableName: String): Resource[IO, UsingDynamoDb] =
-        for {
-          client <- Resource.make(IO(DynamoDbClient.builder().build()))(dynamoDbClient => IO(dynamoDbClient.close()))
-          dynamoKeyValueStore <-
-            Resource.liftK(makeTableIfNoneDefined(client, tableName).as(new UsingDynamoDb(tableName, client)))
-        } yield dynamoKeyValueStore
-
-      private def makeTableIfNoneDefined(
-        client: DynamoDbClient,
-        tableName: String,
-      ): IO[Unit] =
-        for {
-          describeTableRequest <- IO.pure(DescribeTableRequest.builder().tableName(tableName).build())
-          tableExists <- IO(client.describeTable(describeTableRequest)).as(true).recover {
-            case _: ResourceNotFoundException => false
-          }
-
-          _ <-
-            if (tableExists) {
-              IO.unit
-            } else {
-              for {
-                createTableRequest <- IO.pure(
-                  CreateTableRequest
-                    .builder()
-                    .tableName(tableName)
-                    .billingMode(BillingMode.PAY_PER_REQUEST)
-                    .attributeDefinitions(
-                      AttributeDefinition
-                        .builder()
-                        .attributeName("documentDigest")
-                        .attributeType(ScalarAttributeType.S)
-                        .build(),
-                    )
-                    .keySchema(KeySchemaElement.builder().attributeName("documentDigest").keyType(KeyType.HASH).build())
-                    .build(),
-                )
-
-                createTableResponse <-
-                  IO(client.createTable(createTableRequest)) // TODO need to wait for the able creation to complete
-
-                _ <- RetryEffect.exponentialRetry(
-                  initialDelay = Duration.ofSeconds(10),
-                  factor = 1,
-                  maxWait = Duration.ofMinutes(1),
-                ) {
-                  waitForTableCreated(client, tableName)
-                }
-
-              } yield ()
-            }
-
-        } yield ()
-
-      private def waitForTableCreated(client: DynamoDbClient, tableName: String): IO[RetryEffect.Result[Unit]] = {
-        val request = DescribeTableRequest.builder().tableName(tableName).build()
-
-        for {
-          describeTableResult <- IO(client.describeTable(request))
-
-          result <- Option(describeTableResult.table).map(_.tableStatus) match {
-            case Some(TableStatus.CREATING) => IO.raiseError(GenericException("Table still creating"))
-            case Some(_)                    => IO.pure(RetryEffect.Result.Finished(()))
-            case None                       => IO.pure(RetryEffect.Result.FailedFinished(GenericException("Table not created")))
-          }
-        } yield result
-      }
-    }
-
-  }
-
-  private case object CachedJobHasExpired
 
 }
