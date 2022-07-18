@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.TableStatus.CREATING
 import software.amazon.awssdk.services.dynamodb.model._
 
+// TODO
 final class DynamoStore private (
   client: DynamoDbAsyncClient,
   tableName: TableName,

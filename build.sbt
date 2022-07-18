@@ -1,9 +1,31 @@
-import au.id.tmm.sbt.DependencySettings
+name := "fetch"
 
-ThisBuild / sonatypeProfile := "au.id.tmm"
-ThisBuild / baseProjectName := "fetch"
-ThisBuild / githubProjectName := "fetch"
-ThisBuild / githubWorkflowJavaVersions := List("adopt@1.11")
+ThisBuild / tlBaseVersion := "0.1"
+
+Sonatype.SonatypeKeys.sonatypeProfileName := "au.id.tmm"
+ThisBuild / organization := "au.id.tmm.fetch"
+ThisBuild / organizationName := "Timothy McCarthy"
+ThisBuild / startYear := Some(2022)
+ThisBuild / licenses := Seq(License.Apache2)
+ThisBuild / developers := List(
+  tlGitHubDev("tmccarthy", "Timothy McCarthy"),
+)
+
+val Scala213 = "2.13.8"
+ThisBuild / scalaVersion := Scala213
+ThisBuild / crossScalaVersions := Seq(
+  Scala213,
+//  "3.1.1", // TODO need to publish tmmUtils for 3
+)
+
+ThisBuild / githubWorkflowJavaVersions := List(
+  JavaSpec.temurin("11"),
+  JavaSpec.temurin("17"),
+)
+
+ThisBuild / tlCiHeaderCheck := false
+ThisBuild / tlCiScalafmtCheck := true
+ThisBuild / tlCiMimaBinaryIssueCheck := false
 
 val circeVersion          = "0.15.0-M1"
 val awsSdkVersion         = "2.15.33"
@@ -13,20 +35,13 @@ val fs2Version            = "3.2.7"
 val sttpVersion           = "3.5.2"
 val catsEffectVersion     = "3.2.9"
 val slf4jVersion          = "2.0.0-alpha1"
+val mUnitVersion          = "0.7.27"
 
-lazy val root = project
-  .in(file("."))
-  .settings(settingsForRootProject)
-  .settings(console := (core / Compile / console).value)
-  .aggregate(
-    core,
-    cache,
-    awsTextract,
-  )
+lazy val root = tlCrossRootProject.aggregate(core, cache, awsTextract)
 
 lazy val core = project
   .in(file("core"))
-  .settings(settingsForSubprojectCalled("core"))
+  .settings(name := "fetch-core")
   .settings(
     libraryDependencies += "au.id.tmm.tmm-utils"           %% "tmm-utils-cats"                 % tmmUtilsVersion,
     libraryDependencies += "au.id.tmm.tmm-utils"           %% "tmm-utils-errors"               % tmmUtilsVersion,
@@ -43,26 +58,31 @@ lazy val core = project
     libraryDependencies += "com.softwaremill.sttp.client3" %% "circe"                          % sttpVersion,
     libraryDependencies += "org.slf4j"                      % "slf4j-simple"                   % slf4jVersion % Runtime,
   )
+  .settings(
+    testFrameworks += new TestFramework("munit.Framework"),
+    libraryDependencies += "org.scalameta" %% "munit" % mUnitVersion % Test,
+  )
 
 lazy val cache = project
   .in(file("cache"))
-  .settings(settingsForSubprojectCalled("cache"))
+  .settings(name := "fetch-cache")
   .dependsOn(core)
   .settings(
-    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core"       % "0.0.1",
-    libraryDependencies += "org.slf4j"           % "slf4j-simple"        % slf4jVersion % Runtime,
-    libraryDependencies += "org.xerial"          % "sqlite-jdbc"         % "3.36.0.3"   % Test,
-    libraryDependencies += "org.typelevel"      %% "munit-cats-effect-3" % "1.0.5"      % Test,
-    libraryDependencies += "org.scalameta"      %% "munit-scalacheck"    % "0.7.29"     % Test,
+    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core" % "0.0.1",
+    libraryDependencies += "org.slf4j"           % "slf4j-simple"  % slf4jVersion % Runtime,
+  )
+  .settings(
+    testFrameworks += new TestFramework("munit.Framework"),
+    libraryDependencies += "org.scalameta" %% "munit"               % mUnitVersion % Test,
+    libraryDependencies += "org.xerial"     % "sqlite-jdbc"         % "3.36.0.3"   % Test,
+    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5"      % Test,
+    libraryDependencies += "org.scalameta" %% "munit-scalacheck"    % "0.7.29"     % Test,
   )
 
 lazy val awsTextract = project
   .in(file("aws-textract"))
-  .settings(settingsForSubprojectCalled("aws-textract"))
+  .settings(name := "fetch-aws-textract")
   .dependsOn(cache) // TODO this dependency tree brings in way too much given what is needed. Might need reconsidering
-  .settings(
-    resolvers += "aws-dynamodb-local" at "https://s3-us-west-2.amazonaws.com/dynamodb-local/release/",
-  )
   .settings(
     libraryDependencies += "org.typelevel"                   %% "cats-effect"                    % catsEffectVersion,
     libraryDependencies += "co.fs2"                          %% "fs2-core"                       % fs2Version,
@@ -80,6 +100,12 @@ lazy val awsTextract = project
     libraryDependencies += "me.xdrop"                         % "fuzzywuzzy"                     % "1.3.1",
     libraryDependencies += "org.slf4j"                        % "slf4j-api"                      % slf4jVersion,
     libraryDependencies += "org.slf4j"                        % "slf4j-simple"                   % slf4jVersion % Runtime,
-    libraryDependencies += "app.cash.tempest"                 % "tempest2-testing-jvm"           % "1.5.2",
-    libraryDependencies += "org.typelevel"                   %% "munit-cats-effect-3"            % "1.0.5"      % Test,
   )
+  .settings(
+    testFrameworks += new TestFramework("munit.Framework"),
+    libraryDependencies += "org.scalameta" %% "munit"               % mUnitVersion % Test,
+    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5"      % Test,
+  )
+
+addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAll;+test")
+addCommandAlias("fix", ";githubWorkflowGenerate;+scalafmtSbt;+scalafmtAll")
