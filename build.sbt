@@ -101,10 +101,15 @@ lazy val awsTextract = project
     libraryDependencies += "org.slf4j"                        % "slf4j-api"                      % slf4jVersion,
     libraryDependencies += "org.slf4j"                        % "slf4j-simple"                   % slf4jVersion % Runtime,
   )
+  .configs(IntegrationTest)
   .settings(
+    Defaults.itSettings,
+    IntegrationTest / parallelExecution := false,
     testFrameworks += new TestFramework("munit.Framework"),
-    libraryDependencies += "org.scalameta" %% "munit"               % mUnitVersion % Test,
-    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5"      % Test,
+    libraryDependencies += "org.scalameta" %% "munit"               % mUnitVersion % "it,test",
+    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5"      % "it,test",
+    libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.13" % "it",
+    libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.13" % "it",
   )
 
 addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAll;+test")
