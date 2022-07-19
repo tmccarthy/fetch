@@ -93,6 +93,7 @@ lazy val awsTextract = project
     libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-syntax"               % tmmUtilsVersion,
     libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-errors"               % tmmUtilsVersion,
     libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-cats"                 % tmmUtilsVersion,
+    libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-circe"                % tmmUtilsVersion,
     libraryDependencies += "com.softwaremill.sttp.client3"   %% "core"                           % sttpVersion,
     libraryDependencies += "com.softwaremill.sttp.client3"   %% "async-http-client-backend-cats" % sttpVersion,
     libraryDependencies += "software.amazon.awssdk"           % "textract"                       % awsSdkVersion,

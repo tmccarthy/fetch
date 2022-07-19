@@ -1,6 +1,7 @@
 package au.id.tmm.fetch.aws.textract.model
 
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
+import io.circe.{Codec, Decoder, Encoder}
 
 final case class PageNumber private (asInt: Int) extends AnyVal
 
@@ -23,4 +24,9 @@ object PageNumber {
   val `10`: PageNumber = PageNumber(10).fold(e => throw new AssertionError(e), p => p)
 
   implicit val ordering: Ordering[PageNumber] = Ordering.by(_.asInt)
+
+  implicit val codec: Codec[PageNumber] = Codec.from(
+    Decoder[Int].map(PageNumber.apply).emap(_.left.map(_.toString)),
+    Encoder[Int].contramap(_.asInt),
+  )
 }

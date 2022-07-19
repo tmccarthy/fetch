@@ -2,6 +2,7 @@ package au.id.tmm.fetch.aws.textract.model
 
 import au.id.tmm.fetch.aws.textract.model.Geometry.Polygon.Point
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
+import io.circe.{Codec, Decoder, Encoder}
 
 import scala.collection.immutable.ArraySeq
 
@@ -47,6 +48,11 @@ object Geometry {
         height <- requireNonNegative(height)
         width  <- requireNonNegative(width)
       } yield new BoundingBox(left, top, height, width)
+
+    implicit val codec: Codec[BoundingBox] = Codec.from(
+      Decoder.forProduct4("left", "top", "height", "width")(BoundingBox.apply).emap(_.left.map(_.getMessage)),
+      Encoder.forProduct4("left", "top", "height", "width")(b => (b.left, b.top, b.height, b.width)),
+    )
   }
 
   final case class Polygon(
@@ -66,8 +72,22 @@ object Geometry {
           x <- requireNonNegative(x)
           y <- requireNonNegative(y)
         } yield new Point(x, y)
+
+      implicit val codec: Codec[Point] = Codec.from(
+        Decoder.forProduct2("x", "y")(Point.apply).emap(_.left.map(_.toString)),
+        Encoder.forProduct2("x", "y")(p => (p.x, p.y)),
+      )
     }
 
+    implicit val codec: Codec[Polygon] = Codec.from(
+      Decoder[ArraySeq[Point]].map(Polygon.apply),
+      Encoder[ArraySeq[Point]].contramap(_.points),
+    )
   }
+
+  implicit val codec: Codec[Geometry] = Codec.from(
+    Decoder.forProduct2("boundingBox", "polygon")(Geometry.apply),
+    Encoder.forProduct2("boundingBox", "polygon")(g => (g.boundingBox, g.polygon)),
+  )
 
 }
