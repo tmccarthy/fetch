@@ -7,3 +7,4 @@ A library of tools I find myself writing for fetching data from the web. Include
 * A client for OpenStreetMap that can be used to geocode location strings
 * A client for the data.gov.au API
 * Caches using the local filesystem or a local Sqlite DB
+* A scala client for AWS Textract, extracted and expanded from [tmccarthy/australian-federal-parliament-citizenship-register-scraper](https://github.com/tmccarthy/australian-federal-parliament-citizenship-register-scraper)
