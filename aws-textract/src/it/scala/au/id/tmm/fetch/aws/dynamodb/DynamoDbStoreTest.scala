@@ -7,10 +7,11 @@ import munit.CatsEffectSuite
 
 class DynamoDbStoreTest extends CatsEffectSuite {
 
-  private val storeFixture: Fixture[DynamoStore] = ResourceSuiteLocalFixture("dynamo-db-store",
+  private val storeFixture: Fixture[DynamoStore] = ResourceSuiteLocalFixture(
+    "dynamo-db-store",
     DynamoDbDockerTest.localDynamoDbUri.flatMap { uri =>
       DynamoStore(TableName("test-table"), Some(uri))
-    }
+    },
   )
 
   override def munitFixtures: Seq[Fixture[_]] = List(storeFixture)

@@ -3,6 +3,7 @@ package au.id.tmm.fetch.aws.dynamodb
 import java.net.URI
 import java.time.Duration
 
+import au.id.tmm.fetch.aws.dynamodb.DynamoStore.{dynamoKeyName, dynamoValueName}
 import au.id.tmm.fetch.aws.{makeClientAsyncConfiguration, toIO}
 import au.id.tmm.fetch.cache.KVStore
 import au.id.tmm.fetch.retries.RetryEffect
@@ -13,18 +14,91 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.TableStatus.CREATING
 import software.amazon.awssdk.services.dynamodb.model._
 
-// TODO
+import scala.jdk.CollectionConverters.MapHasAsJava
+
 final class DynamoStore private (
   client: DynamoDbAsyncClient,
   tableName: TableName,
 ) extends KVStore[IO, String, Json, Json] {
-  override def get(k: String): IO[Option[Json]]  = ???
-  override def contains(k: String): IO[Boolean]  = ???
-  override def put(k: String, v: Json): IO[Json] = ???
-  override def drop(k: String): IO[Unit]         = ???
+  override def get(k: String): IO[Option[Json]] = {
+    val req = GetItemRequest
+      .builder()
+      .tableName(tableName.asString)
+      .key(makeAttributeMap(key = k))
+      .build()
+
+    //noinspection SimplifyBooleanMatch
+    for {
+      response <- IO.fromCompletableFuture(IO(client.getItem(req)))
+      value <-
+        response.hasItem match {
+          case false => IO.pure(None)
+          case true =>
+            Option(response.item().get(dynamoValueName)) match {
+              case None => IO.raiseError(GenericException(s"No value for key $dynamoValueName"))
+              case Some(attributeValue) =>
+                Option(attributeValue.s()) match {
+                  case None              => IO.raiseError(GenericException(s"Not a string attribute"))
+                  case Some(stringValue) => IO.fromEither(io.circe.parser.parse(stringValue)).map(Some.apply)
+                }
+            }
+        }
+    } yield value
+  }
+
+  override def contains(k: String): IO[Boolean] = {
+    val req = GetItemRequest
+      .builder()
+      .tableName(tableName.asString)
+      .key(makeAttributeMap(key = k))
+      .projectionExpression(dynamoKeyName)
+      .build()
+
+    for {
+      response <- IO.fromCompletableFuture(IO(client.getItem(req)))
+    } yield response.hasItem
+  }
+
+  override def put(k: String, v: Json): IO[Json] = {
+    val req = PutItemRequest
+      .builder()
+      .tableName(tableName.asString)
+      .item(makeAttributeMap(key = k, value = Some(v.noSpaces)))
+      .build()
+
+    for {
+      response <- IO.fromCompletableFuture(IO(client.putItem(req)))
+    } yield v
+  }
+
+  override def drop(k: String): IO[Unit] = {
+    val req = DeleteItemRequest
+      .builder()
+      .tableName(tableName.asString)
+      .key(makeAttributeMap(key = k))
+      .build()
+
+    for {
+      response <- IO.fromCompletableFuture(IO(client.deleteItem(req)))
+    } yield ()
+  }
+
+  private def makeAttributeMap(key: String, value: Option[String] = None): java.util.Map[String, AttributeValue] = {
+    val map = Map.newBuilder[String, AttributeValue]
+
+    map.addOne(dynamoKeyName -> AttributeValue.builder().s(key).build())
+
+    value.foreach(v => map.addOne(dynamoValueName -> AttributeValue.builder().s(v).build()))
+
+    map.result().asJava
+  }
+
 }
 
 object DynamoStore {
+
+  private val dynamoKeyName: String   = "entry_key"
+  private val dynamoValueName: String = "entry_value"
 
   def apply(tableName: TableName): Resource[IO, DynamoStore] = apply(tableName, None)
 
@@ -80,11 +154,11 @@ object DynamoStore {
         .attributeDefinitions(
           AttributeDefinition
             .builder()
-            .attributeName("key")
+            .attributeName(dynamoKeyName)
             .attributeType(ScalarAttributeType.S)
             .build(),
         )
-        .keySchema(KeySchemaElement.builder().attributeName("key").keyType(KeyType.HASH).build())
+        .keySchema(KeySchemaElement.builder().attributeName(dynamoKeyName).keyType(KeyType.HASH).build())
         .build()
 
     toIO(IO(client.createTable(createTableRequest))).as(())

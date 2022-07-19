@@ -106,11 +106,13 @@ lazy val awsTextract = project
     Defaults.itSettings,
     IntegrationTest / parallelExecution := false,
     testFrameworks += new TestFramework("munit.Framework"),
-    libraryDependencies += "org.scalameta" %% "munit"               % mUnitVersion % "it,test",
-    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5"      % "it,test",
-    libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.13" % "it",
-    libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.13" % "it",
+    libraryDependencies += "org.scalameta"         %% "munit"                             % mUnitVersion % "it,test",
+    libraryDependencies += "org.typelevel"         %% "munit-cats-effect-3"               % "1.0.5"      % "it,test",
+    libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.13"     % "it",
+    libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.13"     % "it",
   )
 
-addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAll;+test")
+addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAll;+test;+IntegrationTest/test")
 addCommandAlias("fix", ";githubWorkflowGenerate;+scalafmtSbt;+scalafmtAll")
+
+githubWorkflowBuild.+=(WorkflowStep.Sbt(List("+IntegrationTest/test"), name = Some("Integration test")))
