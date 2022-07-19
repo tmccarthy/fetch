@@ -18,11 +18,15 @@ import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient
 import fs2.io.IOException
 import org.slf4j.{Logger, LoggerFactory}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest
 
 // TODO move this stuff (especially the docker stuff) into tmmUtils-testing
 object DynamoDbDockerTest {
+  val testRegion: Region = Region.AP_SOUTHEAST_2
+
   private val logger: Logger = LoggerFactory.getLogger(getClass)
 
   private val docker: Resource[IO, DockerClient] = Resource.fromAutoCloseable(
@@ -106,7 +110,12 @@ object DynamoDbDockerTest {
   private def dynamoClient(dynamoUri: URI): Resource[IO, DynamoDbClient] =
     Resource.fromAutoCloseable(
       IO {
-        DynamoDbClient.builder().endpointOverride(dynamoUri).build()
+        DynamoDbClient
+          .builder()
+          .endpointOverride(dynamoUri)
+          .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
+          .region(DynamoDbDockerTest.testRegion)
+          .build()
       },
     )
 

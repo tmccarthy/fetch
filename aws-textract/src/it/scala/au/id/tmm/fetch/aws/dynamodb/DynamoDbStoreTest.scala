@@ -4,13 +4,21 @@ import cats.effect.IO
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import munit.CatsEffectSuite
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 
 class DynamoDbStoreTest extends CatsEffectSuite {
 
   private val storeFixture: Fixture[DynamoStore] = ResourceSuiteLocalFixture(
     "dynamo-db-store",
     DynamoDbDockerTest.localDynamoDbUri.flatMap { uri =>
-      DynamoStore(TableName("test-table"), Some(uri))
+      DynamoStore(
+        TableName("test-table"),
+        configureClient = clientBuilder =>
+          clientBuilder
+            .endpointOverride(uri)
+            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
+            .region(DynamoDbDockerTest.testRegion),
+      )
     },
   )
 

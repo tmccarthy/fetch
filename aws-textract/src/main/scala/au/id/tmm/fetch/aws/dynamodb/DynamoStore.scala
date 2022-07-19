@@ -1,6 +1,5 @@
 package au.id.tmm.fetch.aws.dynamodb
 
-import java.net.URI
 import java.time.Duration
 
 import au.id.tmm.fetch.aws.dynamodb.DynamoStore.{dynamoKeyName, dynamoValueName}
@@ -10,9 +9,9 @@ import au.id.tmm.fetch.retries.RetryEffect
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.{IO, Resource}
 import io.circe.Json
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.TableStatus.CREATING
 import software.amazon.awssdk.services.dynamodb.model._
+import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbAsyncClientBuilder}
 
 import scala.jdk.CollectionConverters.MapHasAsJava
 
@@ -100,14 +99,17 @@ object DynamoStore {
   private val dynamoKeyName: String   = "entry_key"
   private val dynamoValueName: String = "entry_value"
 
-  def apply(tableName: TableName): Resource[IO, DynamoStore] = apply(tableName, None)
+  def apply(tableName: TableName): Resource[IO, DynamoStore] = apply(tableName, identity)
 
   /**
     * This is only here for testing
     */
-  def apply(tableName: TableName, overrideDynamoEndpoint: Option[URI]): Resource[IO, DynamoStore] =
+  def apply(
+    tableName: TableName,
+    configureClient: DynamoDbAsyncClientBuilder => DynamoDbAsyncClientBuilder,
+  ): Resource[IO, DynamoStore] =
     for {
-      client <- dynamoClientResource(overrideDynamoEndpoint)
+      client <- dynamoClientResource(configureClient)
       _ <- Resource.liftK {
         for {
           tableExists <- tableExists(client, tableName)
@@ -116,14 +118,16 @@ object DynamoStore {
       }
     } yield new DynamoStore(client, tableName)
 
-  private def dynamoClientResource(overrideDynamoEndpoint: Option[URI]): Resource[IO, DynamoDbAsyncClient] =
+  private def dynamoClientResource(
+    configureClient: DynamoDbAsyncClientBuilder => DynamoDbAsyncClientBuilder,
+  ): Resource[IO, DynamoDbAsyncClient] =
     Resource.fromAutoCloseable {
       for {
         clientAsyncConfig <- makeClientAsyncConfiguration
       } yield {
         val clientBuilder = DynamoDbAsyncClient.builder()
 
-        overrideDynamoEndpoint.foreach(clientBuilder.endpointOverride)
+        configureClient(clientBuilder)
 
         clientBuilder
           .asyncConfiguration(clientAsyncConfig)
