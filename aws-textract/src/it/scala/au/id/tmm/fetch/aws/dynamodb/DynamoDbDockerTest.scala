@@ -26,6 +26,8 @@ import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest
 // TODO move this stuff (especially the docker stuff) into tmmUtils-testing
 object DynamoDbDockerTest {
   val testRegion: Region = Region.AP_SOUTHEAST_2
+  val testCredentials: StaticCredentialsProvider =
+    StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test"))
 
   private val logger: Logger = LoggerFactory.getLogger(getClass)
 
@@ -113,7 +115,7 @@ object DynamoDbDockerTest {
         DynamoDbClient
           .builder()
           .endpointOverride(dynamoUri)
-          .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
+          .credentialsProvider(testCredentials)
           .region(DynamoDbDockerTest.testRegion)
           .build()
       },

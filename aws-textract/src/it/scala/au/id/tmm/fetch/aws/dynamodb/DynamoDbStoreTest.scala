@@ -16,7 +16,7 @@ class DynamoDbStoreTest extends CatsEffectSuite {
         configureClient = clientBuilder =>
           clientBuilder
             .endpointOverride(uri)
-            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("test", "test")))
+            .credentialsProvider(DynamoDbDockerTest.testCredentials)
             .region(DynamoDbDockerTest.testRegion),
       )
     },
