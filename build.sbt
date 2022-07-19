@@ -115,4 +115,4 @@ lazy val awsTextract = project
 addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAll;+test;+IntegrationTest/test")
 addCommandAlias("fix", ";githubWorkflowGenerate;+scalafmtSbt;+scalafmtAll")
 
-githubWorkflowBuild.+=(WorkflowStep.Sbt(List("+IntegrationTest/test"), name = Some("Integration test")))
+ThisBuild / githubWorkflowBuild += WorkflowStep.Sbt(List("+IntegrationTest/test"), name = Some("Integration test"))
