@@ -4,7 +4,6 @@ import cats.effect.IO
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import munit.CatsEffectSuite
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 
 class DynamoDbStoreTest extends CatsEffectSuite {
 
