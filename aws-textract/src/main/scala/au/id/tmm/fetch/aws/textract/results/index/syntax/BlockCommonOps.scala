@@ -6,7 +6,7 @@ import au.id.tmm.utilities.errors.ExceptionOr
 
 import scala.reflect.ClassTag
 
-private[syntax] abstract class BlockCommonOps[B <: Block : ClassTag](block: B)(implicit index: AnalysisResultIndex) {
+private[syntax] abstract class BlockCommonOps[B <: Block](block: B)(implicit index: AnalysisResultIndex) {
   def recursivelySearch[B2 <: Block](collect: PartialFunction[Block, B2]): ExceptionOr[LazyList[B2]] =
     Searches.recursivelySearch[B2](block)(collect)
 

@@ -12,8 +12,8 @@ object BlockIterator {
 
   def recursivelyIterateChildrenOf(block: Block, includeKeyValueSets: Boolean = false): Iterator[Block] =
     block match {
-      case block: AtomicBlock => Iterator.empty[Block]
-      case line: Line         => line.children.flatMap(c => recursivelyIterateBlockAndChildren(c, includeKeyValueSets)).iterator
+      case _: AtomicBlock => Iterator.empty[Block]
+      case line: Line     => line.children.flatMap(c => recursivelyIterateBlockAndChildren(c, includeKeyValueSets)).iterator
       case page: Page =>
         page.children.flatMap {
           case Page.Child.OfLine(line)   => recursivelyIterateBlockAndChildren(line, includeKeyValueSets)

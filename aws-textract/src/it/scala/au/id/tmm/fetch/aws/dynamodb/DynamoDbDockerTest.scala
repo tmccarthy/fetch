@@ -83,7 +83,7 @@ object DynamoDbDockerTest {
 
   private def runningDockerContainer(client: DockerClient, containerId: ContainerId): Resource[IO, Unit] =
     Resource.make[IO, Unit](
-      IO(client.startContainerCmd(containerId.asString).exec()),
+      IO(client.startContainerCmd(containerId.asString).exec()).as(()),
     )(_ =>
       IO(client.stopContainerCmd(containerId.asString).exec())
         .as(())
@@ -134,6 +134,8 @@ object DynamoDbDockerTest {
 
         override def close(): Unit = ()
       })
+
+      ()
     }
 
   final case class ContainerId(asString: String) extends AnyVal

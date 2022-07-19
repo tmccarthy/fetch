@@ -67,7 +67,7 @@ final class DynamoStore private (
       .build()
 
     for {
-      response <- IO.fromCompletableFuture(IO(client.putItem(req)))
+      _ <- IO.fromCompletableFuture(IO(client.putItem(req)))
     } yield v
   }
 
@@ -79,7 +79,7 @@ final class DynamoStore private (
       .build()
 
     for {
-      response <- IO.fromCompletableFuture(IO(client.deleteItem(req)))
+      _ <- IO.fromCompletableFuture(IO(client.deleteItem(req)))
     } yield ()
   }
 

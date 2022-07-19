@@ -114,7 +114,7 @@ object KeyValueSets {
     }
 
   private def requireValueBlock(sdkBlock: sdk.Block): ExceptionOr[Unit] =
-    isValueBlock(sdkBlock).map { valueBlockCheck =>
+    isValueBlock(sdkBlock).flatMap { valueBlockCheck =>
       Either.cond(valueBlockCheck, (), GenericException("Expected value block"))
     }
 

@@ -32,9 +32,9 @@ object ChooseBlock {
       }
 
       scorePerBlock
-        .sortBy { case (b, score) => score }
+        .sortBy { case (_, score) => score }
         .headOrException
-        .map { case (b, score) => b }
+        .map { case (b, _) => b }
     }
   }
 }

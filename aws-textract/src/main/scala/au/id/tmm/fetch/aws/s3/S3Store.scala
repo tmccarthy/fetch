@@ -85,7 +85,7 @@ class S3Store private (
     val maybeSdkHeadResponse: IO[Option[HeadObjectResponse]] =
       toIO(IO(s3Client.headObject(request)))
         .map[Option[HeadObjectResponse]](Some(_))
-        .recover { case e: NoSuchKeyException =>
+        .recover { case _: NoSuchKeyException =>
           None
         }
 

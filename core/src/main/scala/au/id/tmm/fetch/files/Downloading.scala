@@ -16,7 +16,7 @@ object Downloading {
   ): IO[Unit] =
     withReplaceExistingCheck(destination, replaceExisting)(IO {
       Files.write(destination, bytes.unsafeArray, StandardOpenOption.CREATE)
-    })
+    }.as(()))
 
   def inputStreamToPath(
     destination: Path,

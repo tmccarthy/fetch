@@ -16,7 +16,11 @@ object GeometricOrdering {
   private def pointFor(block: Block): Point = block.geometry.boundingBox.centre
 
   private def distanceBetween(left: Point, right: Point): Float =
-    math.sqrt(math.pow(right.x - left.x, 2) + math.pow(right.y - left.y, 2)).toFloat
+    math
+      .sqrt(
+        math.pow(right.x.doubleValue - left.x.doubleValue, 2) + math.pow(right.y.doubleValue - left.y.doubleValue, 2),
+      )
+      .toFloat
 
   sealed trait PageSide
 
@@ -27,8 +31,8 @@ object GeometricOrdering {
 
   def byDistanceFrom(pageSide: PageSide): GeometricOrdering =
     pageSide match {
-      case PageSide.Top  => b => pointFor(b).y
-      case PageSide.Left => b => pointFor(b).x
+      case PageSide.Top  => b => pointFor(b).y.doubleValue
+      case PageSide.Left => b => pointFor(b).x.doubleValue
     }
 
   sealed abstract class PageCorner(val point: Point)
@@ -41,9 +45,9 @@ object GeometricOrdering {
   }
 
   def byDistanceFrom(pageCorner: PageCorner): GeometricOrdering =
-    b => distanceBetween(pageCorner.point, pointFor(b))
+    b => distanceBetween(pageCorner.point, pointFor(b)).doubleValue
 
   def byDistanceFrom(block: Block): GeometricOrdering =
-    b => distanceBetween(pointFor(block), pointFor(b))
+    b => distanceBetween(pointFor(block), pointFor(b)).doubleValue
 
 }

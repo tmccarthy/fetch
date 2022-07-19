@@ -31,7 +31,7 @@ class SqliteStore private (private val database: Database) extends KVStore[IO, S
              ON CONFLICT($keyColumn) DO UPDATE
                  SET $valColumn = $v
              WHERE $keyColumn = $k""".asUpdateStatement)
-      updatedId <- affectedRows.size match {
+      _ <- affectedRows.size match {
         case 1       => IO.pure(affectedRows.head)
         case badSize => IO.raiseError(GenericException(s"Expected exactly 1 updated row, but was $badSize"))
       }

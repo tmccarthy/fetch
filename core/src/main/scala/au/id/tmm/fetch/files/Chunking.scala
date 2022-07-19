@@ -48,7 +48,7 @@ object Chunking {
           val currentSectionForNextInvocation = currentSection.map(_.concat(chunkToProcess))
 
           sectionsProcessed match {
-            case sectionsProcessed @ (head :: tail) =>
+            case sectionsProcessed @ (_ :: _) =>
               Pull.output(Chunk.array(sectionsProcessed.toArray[Section])) >>
                 go(currentSectionForNextInvocation, remainingStream)
             case Nil => go(currentSectionForNextInvocation, remainingStream)

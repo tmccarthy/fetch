@@ -3,14 +3,13 @@ package au.id.tmm.fetch.aws.textract.parsing
 import au.id.tmm.fetch.aws.textract.model._
 import au.id.tmm.utilities.errors.ExceptionOr
 import au.id.tmm.utilities.errors.syntax._
-import cats.syntax.traverse.toTraverseOps
 import cats.syntax.functor.toFunctorOps
+import cats.syntax.traverse.toTraverseOps
 import cats.syntax.traverseFilter.toTraverseFilterOps
 import software.amazon.awssdk.services.textract.{model => sdk}
 
 import scala.collection.immutable.ArraySeq
 import scala.jdk.CollectionConverters._
-import scala.reflect.ClassTag
 
 // TODO rename
 object Parse {
@@ -54,7 +53,7 @@ object Parse {
         extract[Page](allBlocks, sdk.BlockType.PAGE, Pages.parsePage(linesById, tablesById, keyValueSetsLookup, _))
     } yield pages
 
-  private def extract[B <: HasBlockId : ClassTag](
+  private def extract[B <: HasBlockId](
     blocks: ArraySeq[sdk.Block],
     blockType: sdk.BlockType,
     make: sdk.Block => ExceptionOr[B],
@@ -68,7 +67,7 @@ object Parse {
         case _ => Right(None)
       }
 
-  private def makeLookup[B <: HasBlockId : ClassTag](
+  private def makeLookup[B <: HasBlockId](
     blocks: ArraySeq[sdk.Block],
     blockType: sdk.BlockType,
     make: sdk.Block => ExceptionOr[B],

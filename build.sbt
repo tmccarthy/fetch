@@ -26,6 +26,7 @@ ThisBuild / githubWorkflowJavaVersions := List(
 ThisBuild / tlCiHeaderCheck := false
 ThisBuild / tlCiScalafmtCheck := true
 ThisBuild / tlCiMimaBinaryIssueCheck := false
+ThisBuild / tlFatalWarnings := true
 
 val circeVersion          = "0.15.0-M1"
 val awsSdkVersion         = "2.15.33"
