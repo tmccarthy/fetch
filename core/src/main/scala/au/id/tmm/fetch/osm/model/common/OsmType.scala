@@ -11,9 +11,9 @@ sealed trait OsmType {
 }
 
 object OsmType {
-  final case object Relation extends OsmType
-  final case object Node     extends OsmType
-  final case object Way      extends OsmType
+  case object Relation extends OsmType
+  case object Node     extends OsmType
+  case object Way      extends OsmType
 
   implicit val decoder: Decoder[OsmType] = Decoder[String].emap {
     case "relation" => Right(Relation)

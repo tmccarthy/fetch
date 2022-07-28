@@ -92,7 +92,7 @@ object Place {
           .getOrElse(List.empty)
           .filter(key => key.startsWith("name:") && key != "name:pronunciation")
           .to(ArraySeq)
-          .traverse { key: String =>
+          .traverse { (key: String) =>
             c.get[String](key).map(name => IanaLanguageSubtag(key.stripPrefix("name:")) -> name)
           }
       } yield NameDetails(name, shortName, pronounciation, byIanaLanguageCode.toMap, iataCode, icaoCode)

@@ -89,7 +89,7 @@ object Geocoder {
       * Geocode the place as NULL in the database: marking as "uncodable" and preventing future attempts to code the
       * place
       */
-    final case object GeocodeAsNull extends ManualOverrideAction
+    case object GeocodeAsNull extends ManualOverrideAction
 
     /**
       * Adjust the place name and try again

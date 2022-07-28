@@ -60,10 +60,10 @@ object DynamoDbDockerTest {
     .make(IO(new ServerSocket(0)))(s => IO(s.close()))
     .use(s => IO(s.getLocalPort))
 
-  private def createdDockerContainer(client: DockerClient): Resource[IO, (Port, ContainerId)] = {
+  private def createdDockerContainer(client: DockerClient): Resource[IO, CreatedDockerContainer] = {
     val dynamoPortOnContainer = ExposedPort.tcp(8000)
 
-    Resource.make[IO, (Port, ContainerId)](
+    Resource.make[IO, CreatedDockerContainer](
       for {
         pullResponse <- toIO(client.pullImageCmd("docker.io/amazon/dynamodb-local").withTag("latest"))
         _            <- IO.fromEither(Either.cond(pullResponse.isPullSuccessIndicated, (), GenericException("Pull failed")))
@@ -79,8 +79,8 @@ object DynamoDbDockerTest {
             )
             .exec()
         }
-      } yield (Port(portToUse), ContainerId(response.getId)),
-    ) { case (_, containerId) =>
+      } yield CreatedDockerContainer(Port(portToUse), ContainerId(response.getId)),
+    ) { case CreatedDockerContainer(_, containerId) =>
       IO(client.removeContainerCmd(containerId.asString).withForce(true).exec())
         .as(())
         .onError(t => IO(logger.error("Exception when removing container", t)))
@@ -128,7 +128,7 @@ object DynamoDbDockerTest {
     } yield ()
 
   private def toIO[R, C <: AsyncDockerCmd[C, R]](dockerCommand: AsyncDockerCmd[C, R]): IO[R] =
-    IO.async_ { cb: (Either[Throwable, R] => Unit) =>
+    IO.async_ { (cb: (Either[Throwable, R] => Unit)) =>
       val latestR: AtomicReference[Option[R]] = new AtomicReference[Option[R]](None)
 
       dockerCommand.exec[ResultCallback[R]](new ResultCallback[R] {
@@ -152,11 +152,13 @@ object DynamoDbDockerTest {
   final case class ContainerId(asString: String) extends AnyVal
   final case class Port(asInt: Int)              extends AnyVal
 
+  final case class CreatedDockerContainer(port: Port, id: ContainerId)
+
   val localDynamoDbUri: Resource[IO, URI] =
     for {
-      dockerClient        <- docker
-      (port, containerId) <- createdDockerContainer(dockerClient)
-      _                   <- runningDockerContainer(dockerClient, containerId)
-      uri                 <- Resource.liftK(dynamoInstanceUri(port))
+      dockerClient    <- docker
+      dockerContainer <- createdDockerContainer(dockerClient)
+      _               <- runningDockerContainer(dockerClient, dockerContainer.id)
+      uri             <- Resource.liftK(dynamoInstanceUri(dockerContainer.port))
     } yield uri
 }

@@ -24,8 +24,8 @@ private[parsing] object Pages {
       geometry   <- parseGeometry(block.geometry)
 
       childLookup: Map[BlockId, Page.Child] = (
-        (lineLookup.view.mapValues(Page.Child.OfLine): MapView[BlockId, Page.Child]) ++
-          (tableLookup.view.mapValues(Page.Child.OfTable): MapView[BlockId, Page.Child])
+        (lineLookup.view.mapValues(Page.Child.OfLine.apply): MapView[BlockId, Page.Child]) ++
+          (tableLookup.view.mapValues(Page.Child.OfTable.apply): MapView[BlockId, Page.Child])
       ).toMap
 
       lineAndTableChildren <- lookupOrIgnore(childLookup, block, sdk.RelationshipType.CHILD)
@@ -34,7 +34,7 @@ private[parsing] object Pages {
       id,
       pageNumber,
       geometry,
-      lineAndTableChildren ++ keyValueSetChildren.map(Page.Child.OfKeyValueSet),
+      lineAndTableChildren ++ keyValueSetChildren.map(Page.Child.OfKeyValueSet.apply),
     )
 
 }

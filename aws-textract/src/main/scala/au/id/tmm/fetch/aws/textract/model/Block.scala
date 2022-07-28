@@ -1,8 +1,8 @@
 package au.id.tmm.fetch.aws.textract.model
 
 import au.id.tmm.fetch.aws.textract.model.SelectionElement.Status
+import io.circe._
 import io.circe.syntax.{EncoderOps, KeyOps}
-import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json}
 
 import scala.collection.immutable.ArraySeq
 
@@ -95,14 +95,14 @@ object Page {
     final case class OfTable(table: Table)                   extends Child
     final case class OfKeyValueSet(keyValueSet: KeyValueSet) extends Child
 
-    implicit val codec: Codec[Child] = Codec.from(
+    implicit val codec: Codec[Child] = Codec.from[Child](
       decodeA = c =>
         c.keys.map(_.toList) match {
           case Some(onlyKey :: Nil) =>
             onlyKey match {
-              case "line"        => c.get[Line]("line").map(OfLine)
-              case "table"       => c.get[Table]("table").map(OfTable)
-              case "keyValueSet" => c.get[KeyValueSet]("keyValueSet").map(OfKeyValueSet)
+              case "line"        => c.get[Line]("line").map(OfLine.apply)
+              case "table"       => c.get[Table]("table").map(OfTable.apply)
+              case "keyValueSet" => c.get[KeyValueSet]("keyValueSet").map(OfKeyValueSet.apply)
             }
           case None | Some(_) => Left(DecodingFailure("Bad keys", c.history))
         },

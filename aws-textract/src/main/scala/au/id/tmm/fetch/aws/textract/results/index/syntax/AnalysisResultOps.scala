@@ -4,7 +4,11 @@ import au.id.tmm.fetch.aws.textract.model.{AnalysisResult, Block, Page, PageNumb
 import au.id.tmm.fetch.aws.textract.results.index.{AnalysisResultIndex, Searches}
 import au.id.tmm.utilities.errors.ExceptionOr
 
-final class AnalysisResultOps private (analysisResult: AnalysisResult)(implicit index: AnalysisResultIndex) {
+final class AnalysisResultOps private (
+  analysisResult: au.id.tmm.fetch.aws.textract.model.AnalysisResult,
+)(implicit
+  index: AnalysisResultIndex,
+) {
   def recursivelySearch[B2 <: Block](collect: PartialFunction[Block, B2]): ExceptionOr[LazyList[B2]] =
     Searches.recursivelySearch(analysisResult)(collect)
 

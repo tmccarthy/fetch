@@ -8,6 +8,8 @@ import munit.CatsEffectSuite
 
 class SqliteStoreTest extends CatsEffectSuite {
 
+  Class.forName("org.sqlite.JDBC")
+
   private val dbFilePath: Resource[IO, Path] =
     Resource.make(IO(Files.createTempDirectory(getClass.getSimpleName).resolve("test.db"))) { path =>
       for {

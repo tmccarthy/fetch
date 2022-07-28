@@ -15,7 +15,7 @@ val Scala213 = "2.13.8"
 ThisBuild / scalaVersion := Scala213
 ThisBuild / crossScalaVersions := Seq(
   Scala213,
-//  "3.1.1", // TODO need to publish tmmUtils for 3
+  "3.1.3",
 )
 
 ThisBuild / githubWorkflowJavaVersions := List(
@@ -28,10 +28,13 @@ ThisBuild / tlCiScalafmtCheck := true
 ThisBuild / tlCiMimaBinaryIssueCheck := false
 ThisBuild / tlFatalWarnings := true
 
+addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAll;+test;+IntegrationTest/test")
+addCommandAlias("fix", ";githubWorkflowGenerate;+scalafmtSbt;+scalafmtAll")
+
 val circeVersion          = "0.15.0-M1"
 val awsSdkVersion         = "2.15.33"
-val tmmUtilsVersion       = "0.9.1"
-val tmmCollectionsVersion = "0.0.5"
+val tmmUtilsVersion       = "0.10.0"
+val tmmCollectionsVersion = "0.2.0"
 val fs2Version            = "3.2.7"
 val sttpVersion           = "3.5.2"
 val catsEffectVersion     = "3.2.9"
@@ -69,7 +72,7 @@ lazy val cache = project
   .settings(name := "fetch-cache")
   .dependsOn(core)
   .settings(
-    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core" % "0.0.1",
+    libraryDependencies += "au.id.tmm.scala-db" %% "scala-db-core" % "0.1.0",
     libraryDependencies += "org.slf4j"           % "slf4j-simple"  % slf4jVersion % Runtime,
   )
   .settings(
@@ -87,7 +90,7 @@ lazy val awsTextract = project
   .settings(
     libraryDependencies += "org.typelevel"                   %% "cats-effect"                    % catsEffectVersion,
     libraryDependencies += "co.fs2"                          %% "fs2-core"                       % fs2Version,
-    libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "0.0.1",
+    libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "0.1.0",
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-core"     % tmmCollectionsVersion,
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-cats"     % tmmCollectionsVersion,
     libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-syntax"               % tmmUtilsVersion,
@@ -113,8 +116,5 @@ lazy val awsTextract = project
     libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.13"     % "it",
     libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.13"     % "it",
   )
-
-addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAll;+test;+IntegrationTest/test")
-addCommandAlias("fix", ";githubWorkflowGenerate;+scalafmtSbt;+scalafmtAll")
 
 ThisBuild / githubWorkflowBuild += WorkflowStep.Sbt(List("+IntegrationTest/test"), name = Some("Integration test"))
