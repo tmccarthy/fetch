@@ -6,9 +6,8 @@ import cats.implicits.toTraverseOps
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 
-// TODO tests
 final case class LayeredKVStore[F[_] : Monad, K, V_IN, V_OUT](
-  refeed: V_OUT => V_IN,
+  refeed: V_OUT => F[V_IN],
   underlying: NonEmptyList[KVStore[F, K, V_IN, V_OUT]],
 ) extends KVStore[F, K, V_IN, V_OUT] {
 
@@ -28,7 +27,7 @@ final case class LayeredKVStore[F[_] : Monad, K, V_IN, V_OUT](
               case None => go(storesMissingValue :+ thisStore, nextRemainingStoresToCheck)
               case Some(vOut) =>
                 for {
-                  vIn <- F.pure(refeed(vOut))
+                  vIn <- refeed(vOut)
                   _   <- storesMissingValue.traverse(_.put(k, vIn))
                 } yield Some(vOut)
             }
