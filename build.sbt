@@ -1,3 +1,5 @@
+import scala.util.chaining._
+
 name := "fetch"
 
 ThisBuild / tlBaseVersion := "0.2"
@@ -87,6 +89,13 @@ lazy val awsTextract = project
   .in(file("aws-textract"))
   .settings(name := "fetch-aws-textract")
   .dependsOn(cache) // TODO this dependency tree brings in way too much given what is needed. Might need reconsidering
+  .settings(
+    // Crashes in 3.1.3
+    Compile / doc / sources := (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((3, 0 | 1)) => Nil
+      case Some(_) | None   => (Compile / doc / sources).value
+    }),
+  )
   .settings(
     libraryDependencies += "org.typelevel"                   %% "cats-effect"                    % catsEffectVersion,
     libraryDependencies += "co.fs2"                          %% "fs2-core"                       % fs2Version,
