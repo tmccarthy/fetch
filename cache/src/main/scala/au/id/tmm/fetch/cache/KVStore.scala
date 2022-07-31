@@ -30,10 +30,25 @@ trait KVStore[F[_], K, V_IN, V_OUT] {
     }
 
   // TODO could be done to be weaker in F
-  def mapValue[V_OUT_1](f: V_OUT => V_OUT_1)(implicit F: Monad[F]): KVStore[F, K, V_IN, V_OUT_1] =
-    flatMapValue(vOut => F.pure(f(vOut)))
+  def contramapValueIn[V_IN_1](f: V_IN_1 => V_IN)(implicit F: Monad[F]): KVStore[F, K, V_IN_1, V_OUT] =
+    contraFlatMapValueIn(v1 => F.pure(f(v1)))
 
-  def flatMapValue[V_OUT_1](f: V_OUT => F[V_OUT_1])(implicit F: Monad[F]): KVStore[F, K, V_IN, V_OUT_1] =
+  def contraFlatMapValueIn[V_IN_1](f: V_IN_1 => F[V_IN])(implicit F: Monad[F]): KVStore[F, K, V_IN_1, V_OUT] =
+    new KVStore[F, K, V_IN_1, V_OUT] {
+      override def get(k: K): F[Option[V_OUT]] = KVStore.this.get(k)
+
+      override def contains(k: K): F[Boolean] = KVStore.this.contains(k)
+
+      override def put(k: K, v: V_IN_1): F[V_OUT] = f(v).flatMap(KVStore.this.put(k, _))
+
+      override def drop(k: K): F[Unit] = KVStore.this.drop(k)
+    }
+
+  // TODO could be done to be weaker in F
+  def mapValueOut[V_OUT_1](f: V_OUT => V_OUT_1)(implicit F: Monad[F]): KVStore[F, K, V_IN, V_OUT_1] =
+    flatMapValueOut(vOut => F.pure(f(vOut)))
+
+  def flatMapValueOut[V_OUT_1](f: V_OUT => F[V_OUT_1])(implicit F: Monad[F]): KVStore[F, K, V_IN, V_OUT_1] =
     new KVStore[F, K, V_IN, V_OUT_1] {
       override def get(k: K): F[Option[V_OUT_1]] = KVStore.this.get(k).flatMap(optionF => optionF.traverse(f))
 
