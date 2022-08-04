@@ -25,17 +25,7 @@ final class FriendlyClient(
       for {
         uploadedDocumentLocation: S3ObjectRef <- s3Cache.get(makeS3KeyFor(digest, document)) {
           IO.pure {
-            document.bytes match {
-              case bytes: ArraySeq.ofByte => S3Store.Source(bytes, document.mediaType)
-              case bytes => {
-                val bytesArray = new Array[Byte](bytes.size)
-
-                //noinspection ScalaUnusedExpression
-                bytes.copyToArray(bytesArray)
-
-                S3Store.Source(new ArraySeq.ofByte(bytesArray), document.mediaType)
-              }
-            }
+            S3Store.Source(document.bytes, document.mediaType)
           }
         }
         sdkDocumentLocation = asSdkDocumentLocation(uploadedDocumentLocation)

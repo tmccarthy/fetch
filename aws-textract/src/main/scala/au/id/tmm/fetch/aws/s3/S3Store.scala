@@ -6,6 +6,7 @@ import au.id.tmm.digest4s.digest.syntax._
 import au.id.tmm.fetch.aws.s3.S3Store.{S3CheckResult, S3KeyResolvedAgainstPrefix, Source}
 import au.id.tmm.fetch.aws.{makeClientAsyncConfiguration, toIO}
 import au.id.tmm.fetch.cache.KVStore
+import au.id.tmm.fetch.files.Bytes
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
 import cats.effect.{IO, Resource}
 import cats.syntax.applicativeError.catsSyntaxApplicativeError
@@ -125,7 +126,7 @@ class S3Store private (
       .contentMD5(sourceMd5.asBase64String)
       .build()
 
-    val body = AsyncRequestBody.fromBytes(source.bytes.unsafeArray)
+    val body = AsyncRequestBody.fromBytes(Bytes.toByteArrayUnsafe(source.bytes))
 
     toIO(IO(s3Client.putObject(request, body))).as(())
   }
@@ -150,8 +151,9 @@ object S3Store {
       } yield S3AsyncClient.builder().asyncConfiguration(clientAsyncConfiguration).build()
     }
 
+  // TODO this is too generic to be specifically on the S3 store companion
   final case class Source(
-    bytes: ArraySeq.ofByte, // TODO not sure about the type here
+    bytes: ArraySeq[Byte], // TODO not sure about the type here
     contentType: Option[MediaType],
   )
 

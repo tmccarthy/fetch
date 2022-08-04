@@ -15,17 +15,7 @@ object Downloading {
     bytes: ArraySeq[Byte],
   ): IO[Unit] =
     withReplaceExistingCheck(destination, replaceExisting)(IO {
-      val bytesArray: Array[Byte] = bytes match {
-        case bytes: ArraySeq.ofByte => bytes.unsafeArray
-        case bytes: ArraySeq[Byte] => {
-          val array = new Array[Byte](bytes.length)
-          //noinspection ScalaUnusedExpression
-          bytes.copyToArray(array)
-          array
-        }
-      }
-
-      Files.write(destination, bytesArray, StandardOpenOption.CREATE)
+      Files.write(destination, Bytes.toByteArrayUnsafe(bytes), StandardOpenOption.CREATE)
     }.as(()))
 
   def inputStreamToPath(
