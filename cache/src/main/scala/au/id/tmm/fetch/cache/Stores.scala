@@ -9,10 +9,11 @@ import cats.syntax.traverse._
 import io.circe.{Decoder, Encoder, KeyEncoder, parser}
 import sttp.model.Uri
 
+// TODO not sure how useful this is
 object Stores {
 
   def localFsUriStore(directory: Path): KVStore[IO, Uri, BytesSource, Path] =
-    LocalFsStore(directory).contraFlatMapKey(KeySchemes.uriAsPath)
+    LocalFsStore(directory).evalContramapKey(KeySchemes.naiveUriAsPath)
 
   def localStringStore(location: Path): Resource[IO, KVStore[IO, String, String, String]] =
     SqliteStore.at(location)
