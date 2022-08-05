@@ -12,8 +12,10 @@ import sttp.model.Uri
 // TODO not sure how useful this is
 object Stores {
 
-  def localFsUriStore(directory: Path): KVStore[IO, Uri, BytesSource, Path] =
-    LocalFsStore(directory).evalContramapKey(KeySchemes.naiveUriAsPath)
+  def localFsUriStore(directory: Path): IO[KVStore[IO, Uri, BytesSource, Path]] =
+    for {
+      store <- LocalFsStore(directory)
+    } yield store.evalContramapKey(KeySchemes.naiveUriAsPath)
 
   def localStringStore(location: Path): Resource[IO, KVStore[IO, String, String, String]] =
     SqliteStore.at(location)

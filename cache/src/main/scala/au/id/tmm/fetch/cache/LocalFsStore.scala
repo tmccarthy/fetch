@@ -1,34 +1,19 @@
 package au.id.tmm.fetch.cache
 
+import java.io.IOException
 import java.nio.file.{Files, Path}
 
 import au.id.tmm.fetch.files.{BytesSource, Downloading}
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.IO
-import cats.effect.kernel.Sync
 
 class LocalFsStore private (private val directory: Path) extends KVStore[IO, Path, BytesSource, Path] {
   private def resolve(path: Path): IO[Path] =
     for {
-      resolved     <- IO(directory.resolve(path))
-      isDirectory  <- IO(Files.isDirectory(resolved))
-      _            <- IO.raiseWhen(isDirectory)(GenericException(s"$resolved is a directory"))
-      isInStoreDir <- isInStoreDirectory(path)
-      _            <- IO.raiseUnless(isInStoreDir)(GenericException(s"$resolved is outside store directory"))
+      resolved    <- IO(directory.resolve(path))
+      isDirectory <- IO(Files.isDirectory(resolved))
+      _           <- IO.raiseWhen(isDirectory)(GenericException(s"$resolved is a directory"))
     } yield resolved
-
-  private def isInStoreDirectory(path: Path): IO[Boolean] =
-    Sync[IO].tailRecM(path.toAbsolutePath) { p =>
-      IO(Option(p.getParent))
-        .flatMap {
-          case Some(parent) =>
-            IO(Files.isSameFile(directory, parent)).flatMap {
-              case true  => IO.pure(Right(true))
-              case false => IO.pure(Left(parent))
-            }
-          case None => IO.pure(Right(false))
-        }
-    }
 
   override def get(k: Path): IO[Option[Path]] =
     for {
@@ -41,7 +26,11 @@ class LocalFsStore private (private val directory: Path) extends KVStore[IO, Pat
 
   override def put(k: Path, v: BytesSource): IO[Path] =
     for {
-      resolvedPath <- resolve(k)
+      resolvedPath          <- resolve(k)
+      parentDirectoryExists <- IO(Files.exists(resolvedPath.getParent))
+      _ <- IO.whenA(!parentDirectoryExists) {
+        IO(Files.createDirectories(resolvedPath.getParent)).as(())
+      }
       _ <- v match {
         case BytesSource.OfJavaInputStream(makeIS) =>
           Downloading.inputStreamToPath(resolvedPath, replaceExisting = true, makeIS)
@@ -60,5 +49,10 @@ class LocalFsStore private (private val directory: Path) extends KVStore[IO, Pat
 }
 
 object LocalFsStore {
-  def apply(directory: Path): LocalFsStore = new LocalFsStore(directory.toAbsolutePath)
+  def apply(directory: Path): IO[LocalFsStore] =
+    for {
+      absoluteDir <- IO(directory.toAbsolutePath)
+      valid       <- IO(Files.isDirectory(absoluteDir))
+      _           <- IO.raiseWhen(!valid)(new IOException(s"$absoluteDir is not a directory"))
+    } yield new LocalFsStore(absoluteDir)
 }
