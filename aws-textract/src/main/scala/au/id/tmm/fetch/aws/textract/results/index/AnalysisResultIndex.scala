@@ -7,7 +7,10 @@ import au.id.tmm.utilities.errors.{ExceptionOr, GenericException, ProductExcepti
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
+import scala.util.chaining.scalaUtilChainingOps
 
+// TODO this modeling is awful. Do away with passing around an implicit and just wrap the analysisResult in something like
+//      "IndexedAnalysisResult" or something
 final class AnalysisResultIndex private (
   private[index] val analysisResult: AnalysisResult,
   atomicBlockParents: collection.Map[AtomicBlock, AtomicBlockParent],
@@ -164,7 +167,12 @@ object AnalysisResultIndex {
           val lineAsAtomicBlockParent = AtomicBlockParent.OfLine(line)
           lineParents.put(line, page)
           line.children.foreach { atomicBlock =>
-            atomicBlockParents.put(atomicBlock, lineAsAtomicBlockParent)
+            atomicBlockParents
+              .put(atomicBlock, lineAsAtomicBlockParent)
+              .tap {
+                case Some(_) => throw new AssertionError()
+                case None    => ()
+              }
           }
         }
         case Child.OfTable(table) => {
@@ -174,7 +182,12 @@ object AnalysisResultIndex {
             val cellAsAtomicBlockParent = AtomicBlockParent.OfCell(cell)
             cellParents.put(cell, table)
             cell.children.foreach { atomicBlock =>
-              atomicBlockParents.put(atomicBlock, cellAsAtomicBlockParent)
+              atomicBlockParents
+                .put(atomicBlock, cellAsAtomicBlockParent)
+                .tap {
+                  case Some(_) => throw new AssertionError()
+                  case None    => ()
+                }
             }
             cellLookupBuilder.addOne((cell.columnIndex, cell.rowIndex), cell)
           }

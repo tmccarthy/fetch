@@ -13,7 +13,7 @@ final class AnalysisResultOps private (
     Searches.recursivelySearch(analysisResult)(collect)
 
   def getPage(pageNumber: PageNumber): ExceptionOr[Page] =
-    ExceptionOr.catchIn(analysisResult.pages.apply(pageNumber.asInt - 1))
+    ExceptionOr.catchIn(analysisResult.pages.apply(pageNumber.ordinal - 1))
 }
 
 object AnalysisResultOps {
