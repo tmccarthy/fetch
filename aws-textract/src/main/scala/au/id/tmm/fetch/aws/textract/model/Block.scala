@@ -203,13 +203,21 @@ object Table {
           pageNumber  <- c.get[PageNumber]("pageNumber")
           geometry    <- c.get[Geometry]("geometry")
           columnIndex <- c.get[Int]("columnIndex")
-          columnSpan  <- c.get[Int]("columnSpan")
+          columnSpan  <- c.get[Option[Int]]("columnSpan")
           rowIndex    <- c.get[Int]("rowIndex")
-          rowSpan     <- c.get[Int]("rowSpan")
+          rowSpan     <- c.get[Option[Int]]("rowSpan")
           children    <- c.get[ArraySeq[AtomicBlock]]("children")
 
-          _ <- Either.cond(columnSpan == 1, (), DecodingFailure(s"Bad column span $columnSpan", c.history))
-          _ <- Either.cond(rowSpan == 1, (), DecodingFailure(s"Bad row span $rowSpan", c.history))
+          _ <- Either.cond(
+            columnSpan.isEmpty || columnSpan.contains(1),
+            (),
+            DecodingFailure(s"Bad column span $columnSpan", c.history),
+          )
+          _ <- Either.cond(
+            rowSpan.isEmpty || rowSpan.contains(1),
+            (),
+            DecodingFailure(s"Bad row span $rowSpan", c.history),
+          )
         } yield Cell(id, pageNumber, geometry, Index(rowIndex, columnIndex), children)
       },
       Encoder.forProduct6(

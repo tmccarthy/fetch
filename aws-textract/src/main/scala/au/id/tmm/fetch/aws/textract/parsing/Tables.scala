@@ -39,7 +39,7 @@ private[parsing] object Tables {
     block: sdk.Block,
   ): ExceptionOr[Table.MergedCell] =
     for {
-      _           <- requireBlockType(block, sdk.BlockType.CELL)
+      _           <- requireBlockType(block, sdk.BlockType.MERGED_CELL)
       id          <- BlockId.fromString(block.id)
       pageNumber  <- PageNumber(block.page)
       geometry    <- parseGeometry(block.geometry)
