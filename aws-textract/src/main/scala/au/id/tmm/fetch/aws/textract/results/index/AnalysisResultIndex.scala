@@ -186,8 +186,13 @@ object AnalysisResultIndex {
             atomicBlockParents
               .put(atomicBlock, lineAsAtomicBlockParent)
               .tap {
-                case Some(_) => throw new AssertionError()
-                case None    => ()
+                case Some(oldParent) =>
+                  failBecauseOfMultipleParentsForAtomicBlock(
+                    atomicBlock,
+                    oldParent,
+                    newParent = lineAsAtomicBlockParent,
+                  )
+                case None => ()
               }
           }
         }
@@ -201,8 +206,13 @@ object AnalysisResultIndex {
               atomicBlockParents
                 .put(atomicBlock, cellAsAtomicBlockParent)
                 .tap {
-                  case Some(_) => throw new AssertionError()
-                  case None    => ()
+                  case Some(oldParent) =>
+                    failBecauseOfMultipleParentsForAtomicBlock(
+                      atomicBlock,
+                      oldParent,
+                      newParent = cellAsAtomicBlockParent,
+                    )
+                  case None => ()
                 }
             }
             cellLookupBuilder.addOne((cell.index.column, cell.index.row), cell)
@@ -237,5 +247,14 @@ object AnalysisResultIndex {
       kvForValueLookup,
     )
   }
+
+  private def failBecauseOfMultipleParentsForAtomicBlock(
+    atomicBlock: AtomicBlock,
+    oldParent: AtomicBlockParent,
+    newParent: AtomicBlockParent,
+  ): Nothing = throw new IllegalStateException(
+    s"Atomic block has more than one parent atomicBlock=$atomicBlock, " +
+      s"oldParent=$oldParent, newParent=$newParent",
+  )
 
 }
