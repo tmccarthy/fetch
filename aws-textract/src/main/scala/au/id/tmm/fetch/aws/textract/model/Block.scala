@@ -274,7 +274,22 @@ object Table {
   }
 
   implicit val codec: Codec[Table] = Codec.from(
-    Decoder.forProduct5("id", "pageNumber", "geometry", "children", "mergedCells")(Table.apply),
+    Decoder.forProduct5("id", "pageNumber", "geometry", "children", "mergedCells") {
+      (
+        id: BlockId,
+        pageNumber: PageNumber,
+        geometry: Geometry,
+        children: ArraySeq[Cell],
+        mergedCells: Option[ArraySeq[MergedCell]],
+      ) =>
+        Table(
+          id,
+          pageNumber,
+          geometry,
+          children,
+          mergedCells.getOrElse(ArraySeq.empty), // TODO should probably remove the forgiving mergedCells decoding
+        )
+    },
     Encoder.forProduct5("id", "pageNumber", "geometry", "children", "mergedCells")(t =>
       (t.id, t.pageNumber, t.geometry, t.children, t.mergedCells),
     ),
