@@ -32,7 +32,7 @@ addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAl
 addCommandAlias("fix", ";githubWorkflowGenerate;+scalafmtSbt;+scalafmtAll")
 
 val circeVersion          = "0.15.0-M1"
-val awsSdkVersion         = "2.15.33"
+val awsSdkVersion         = "2.17.290"
 val tmmUtilsVersion       = "0.10.0"
 val tmmCollectionsVersion = "0.2.0"
 val fs2Version            = "3.2.7"

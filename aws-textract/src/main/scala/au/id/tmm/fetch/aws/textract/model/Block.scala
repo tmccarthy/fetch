@@ -166,11 +166,12 @@ final case class Table(
   pageNumber: PageNumber,
   geometry: Geometry,
   children: ArraySeq[Table.Cell],
+  mergedCells: ArraySeq[Table.MergedCell],
 ) extends Block {
   def rows: ArraySeq[ArraySeq[Table.Cell]] =
     children
-      .sortBy(c => (c.rowIndex, c.columnIndex))
-      .groupBy(c => c.rowIndex)
+      .sortBy(c => (c.index.row, c.index.column))
+      .groupBy(c => c.index.row)
       .to(ArraySeq)
       .sortBy(_._1)
       .map(_._2)
@@ -182,10 +183,7 @@ object Table {
     id: BlockId,
     pageNumber: PageNumber,
     geometry: Geometry,
-    columnIndex: Int,
-    columnSpan: Int,
-    rowIndex: Int,
-    rowSpan: Int,
+    index: Cell.Index,
     children: ArraySeq[AtomicBlock],
   ) extends Block
       with ReadableText {
@@ -193,33 +191,93 @@ object Table {
   }
 
   object Cell {
+    final case class Index(
+      row: Int,
+      column: Int,
+    )
+
     implicit val codec: Codec[Cell] = Codec.from(
-      Decoder.forProduct8(
+      Decoder.instance { c =>
+        for {
+          id          <- c.get[BlockId]("id")
+          pageNumber  <- c.get[PageNumber]("pageNumber")
+          geometry    <- c.get[Geometry]("geometry")
+          columnIndex <- c.get[Int]("columnIndex")
+          columnSpan  <- c.get[Int]("columnSpan")
+          rowIndex    <- c.get[Int]("rowIndex")
+          rowSpan     <- c.get[Int]("rowSpan")
+          children    <- c.get[ArraySeq[AtomicBlock]]("children")
+
+          _ <- Either.cond(columnSpan == 1, (), DecodingFailure(s"Bad column span $columnSpan", c.history))
+          _ <- Either.cond(rowSpan == 1, (), DecodingFailure(s"Bad row span $rowSpan", c.history))
+        } yield Cell(id, pageNumber, geometry, Index(rowIndex, columnIndex), children)
+      },
+      Encoder.forProduct6(
         "id",
         "pageNumber",
         "geometry",
         "columnIndex",
-        "columnSpan",
         "rowIndex",
-        "rowSpan",
         "children",
-      )(Cell.apply),
-      Encoder.forProduct8(
+      )(c => (c.id, c.pageNumber, c.geometry, c.index.column, c.index.row, c.children)),
+    )
+  }
+
+  final case class MergedCell(
+    id: BlockId,
+    pageNumber: PageNumber,
+    geometry: Geometry,
+    index: Cell.Index,
+    span: MergedCell.Span,
+    children: ArraySeq[Cell],
+  ) extends Block
+      with ReadableText {
+    override def readableText: String = ReadableText.from(children)
+  }
+
+  object MergedCell {
+    final case class Span(
+      row: Int,
+      column: Int,
+    )
+
+    object Span {
+      implicit val codec: Codec[Span] = Codec.from(
+        Decoder.forProduct2("row", "column")(Span.apply),
+        Encoder.forProduct2("row", "column")(s => (s.row, s.column)),
+      )
+    }
+
+    private implicit val indexCodec: Codec[Cell.Index] = Codec.from(
+      Decoder.forProduct2("row", "column")(Cell.Index.apply),
+      Encoder.forProduct2("row", "column")(s => (s.row, s.column)),
+    )
+
+    implicit val codec: Codec[MergedCell] = Codec.from(
+      Decoder.forProduct6(
         "id",
         "pageNumber",
         "geometry",
-        "columnIndex",
-        "columnSpan",
-        "rowIndex",
-        "rowSpan",
+        "index",
+        "span",
         "children",
-      )(c => (c.id, c.pageNumber, c.geometry, c.columnIndex, c.columnSpan, c.rowIndex, c.rowSpan, c.children)),
+      )(MergedCell.apply),
+      Encoder.forProduct6(
+        "id",
+        "pageNumber",
+        "geometry",
+        "index",
+        "span",
+        "children",
+      )(c => (c.id, c.pageNumber, c.geometry, c.index, c.span, c.children)),
     )
   }
 
   implicit val codec: Codec[Table] = Codec.from(
-    Decoder.forProduct4("id", "pageNumber", "geometry", "children")(Table.apply),
-    Encoder.forProduct4("id", "pageNumber", "geometry", "children")(t => (t.id, t.pageNumber, t.geometry, t.children)),
+    Decoder.forProduct5("id", "pageNumber", "geometry", "children", "mergedCells")(Table.apply),
+    Encoder.forProduct5("id", "pageNumber", "geometry", "children", "mergedCells")(t =>
+      (t.id, t.pageNumber, t.geometry, t.children, t.mergedCells),
+    ),
   )
 
 }

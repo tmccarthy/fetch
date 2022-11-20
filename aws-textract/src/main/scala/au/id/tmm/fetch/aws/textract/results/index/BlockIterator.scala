@@ -32,6 +32,8 @@ object BlockIterator {
         table.children.flatMap(c => recursivelyIterateBlockAndChildren(c, includeKeyValueSets)).iterator
       case cell: Table.Cell =>
         cell.children.flatMap(c => recursivelyIterateBlockAndChildren(c, includeKeyValueSets)).iterator
+      case mergedCell: Table.MergedCell =>
+        mergedCell.children.flatMap(c => recursivelyIterateBlockAndChildren(c, includeKeyValueSets)).iterator
       case key: KeyValueSet.Key =>
         key.children.flatMap(c => recursivelyIterateBlockAndChildren(c, includeKeyValueSets)).iterator
       case value: KeyValueSet.Value =>

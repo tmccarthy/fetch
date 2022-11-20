@@ -1,6 +1,7 @@
 package au.id.tmm.fetch.aws.textract.results.index
 
 import au.id.tmm.fetch.aws.textract.model.Page.Child
+import au.id.tmm.fetch.aws.textract.model.Table.MergedCell
 import au.id.tmm.fetch.aws.textract.model._
 import au.id.tmm.fetch.aws.textract.results.index.AnalysisResultIndex.NotFoundInResults
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException, ProductException}
@@ -15,10 +16,12 @@ final class AnalysisResultIndex private (
   private[index] val analysisResult: AnalysisResult,
   atomicBlockParents: collection.Map[AtomicBlock, AtomicBlockParent],
   cellParents: collection.Map[Table.Cell, Table],
+  mergedCellParents: collection.Map[Table.MergedCell, Table],
   tableParents: collection.Map[Table, Page],
   lineParents: collection.Map[Line, Page],
   kvSetParents: collection.Map[KeyValueSet, Page],
   tableCellLookup: collection.Map[Table, Map[(Int, Int), Table.Cell]],
+  mergedCellLookup: collection.Map[Table.Cell, Table.MergedCell],
   kvSetsForKeys: collection.Map[KeyValueSet.Key, KeyValueSet],
   kvSetsForValues: collection.Map[KeyValueSet.Value, KeyValueSet],
 ) {
@@ -36,13 +39,14 @@ final class AnalysisResultIndex private (
 
   def failIfNotPartOfDocument(block: Block): ExceptionOr[Unit] = {
     val isPartOfDocument = block match {
-      case block: AtomicBlock       => atomicBlockParents.contains(block)
-      case line: Line               => lineParents.contains(line)
-      case page: Page               => pages.contains(page)
-      case table: Table             => tableParents.contains(table)
-      case cell: Table.Cell         => cellParents.contains(cell)
-      case key: KeyValueSet.Key     => kvSetsForKeys.contains(key)
-      case value: KeyValueSet.Value => kvSetsForValues.contains(value)
+      case block: AtomicBlock           => atomicBlockParents.contains(block)
+      case line: Line                   => lineParents.contains(line)
+      case page: Page                   => pages.contains(page)
+      case table: Table                 => tableParents.contains(table)
+      case cell: Table.Cell             => cellParents.contains(cell)
+      case mergedCell: Table.MergedCell => mergedCellParents.contains(mergedCell)
+      case key: KeyValueSet.Key         => kvSetsForKeys.contains(key)
+      case value: KeyValueSet.Value     => kvSetsForValues.contains(value)
     }
 
     Either.cond(isPartOfDocument, (), NotFoundInResults(block))
@@ -51,8 +55,12 @@ final class AnalysisResultIndex private (
   def parentOf(atomicBlock: AtomicBlock): ExceptionOr[AtomicBlockParent] =
     atomicBlockParents.get(atomicBlock).toRight(NotFoundInResults(atomicBlock))
 
+  // TODO this could also be a merged cell?
   def parentOf(cell: Table.Cell): ExceptionOr[Table] =
     cellParents.get(cell).toRight(NotFoundInResults(cell))
+
+  def parentOf(mergedCell: Table.MergedCell): ExceptionOr[Table] =
+    mergedCellParents.get(mergedCell).toRight(NotFoundInResults(mergedCell))
 
   def parentOf(table: Table): ExceptionOr[Page] =
     tableParents.get(table).toRight(NotFoundInResults(table))
@@ -122,6 +130,11 @@ final class AnalysisResultIndex private (
           .toRight(GenericException(s"Cell $columnIndex, $rowIndex not found"))
     } yield cell
 
+  def mergedCellContaining(cell: Table.Cell): ExceptionOr[Option[MergedCell]] =
+    for {
+      _ <- failIfNotPartOfDocument(cell)
+    } yield mergedCellLookup.get(cell)
+
   def kvSetFor(key: KeyValueSet.Key): ExceptionOr[KeyValueSet] =
     kvSetsForKeys.get(key).toRight(NotFoundInResults(key))
 
@@ -140,6 +153,7 @@ final class AnalysisResultIndex private (
         case line: Line                                          => parentOf(line).map(Some.apply)
         case table: Table                                        => parentOf(table).map(Some.apply)
         case cell: Table.Cell                                    => parentOf(cell).map(Some.apply)
+        case mergedCell: Table.MergedCell                        => parentOf(mergedCell).map(Some.apply)
         case _: Page | _: KeyValueSet.Key | _: KeyValueSet.Value => Right(None)
       }
     } yield parent
@@ -153,11 +167,13 @@ object AnalysisResultIndex {
   def apply(analysisResult: AnalysisResult): AnalysisResultIndex = {
     val atomicBlockParents: mutable.Map[AtomicBlock, AtomicBlockParent] = mutable.Map()
     val cellParents: mutable.Map[Table.Cell, Table]                     = mutable.Map()
+    val mergedCellParents: mutable.Map[Table.MergedCell, Table]         = mutable.Map()
     val tableParents: mutable.Map[Table, Page]                          = mutable.Map()
     val lineParents: mutable.Map[Line, Page]                            = mutable.Map()
     val kvSetParents: mutable.Map[KeyValueSet, Page]                    = mutable.Map()
 
     val tableCellLookup: mutable.Map[Table, Map[(Int, Int), Table.Cell]] = mutable.Map()
+    val mergedCellLookup: mutable.Map[Table.Cell, Table.MergedCell]      = mutable.Map()
     val kvForKeyLookup: mutable.Map[KeyValueSet.Key, KeyValueSet]        = mutable.Map()
     val kvForValueLookup: mutable.Map[KeyValueSet.Value, KeyValueSet]    = mutable.Map()
 
@@ -189,7 +205,13 @@ object AnalysisResultIndex {
                   case None    => ()
                 }
             }
-            cellLookupBuilder.addOne((cell.columnIndex, cell.rowIndex), cell)
+            cellLookupBuilder.addOne((cell.index.column, cell.index.row), cell)
+          }
+          table.mergedCells.foreach { mergedCell =>
+            mergedCellParents.put(mergedCell, table)
+            mergedCell.children.foreach { cell =>
+              mergedCellLookup.put(cell, mergedCell)
+            }
           }
           tableCellLookup.addOne(table -> cellLookupBuilder.result())
         }
@@ -205,10 +227,12 @@ object AnalysisResultIndex {
       analysisResult,
       atomicBlockParents,
       cellParents,
+      mergedCellParents,
       tableParents,
       lineParents,
       kvSetParents,
       tableCellLookup,
+      mergedCellLookup,
       kvForKeyLookup,
       kvForValueLookup,
     )

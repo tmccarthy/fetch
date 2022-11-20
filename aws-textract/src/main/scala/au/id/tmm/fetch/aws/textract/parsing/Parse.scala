@@ -44,8 +44,13 @@ object Parse {
 
       linesById <- makeLookup[Line](allBlocks, sdk.BlockType.LINE, Lines.parseLine(atomBlockById, _))
 
-      cellById   <- makeLookup[Table.Cell](allBlocks, sdk.BlockType.CELL, Tables.parseCell(atomBlockById, _))
-      tablesById <- makeLookup[Table](allBlocks, sdk.BlockType.TABLE, Tables.parseTable(cellById, _))
+      cellById <- makeLookup[Table.Cell](allBlocks, sdk.BlockType.CELL, Tables.parseCell(atomBlockById, _))
+      mergedCellById <- makeLookup[Table.MergedCell](
+        allBlocks,
+        sdk.BlockType.MERGED_CELL,
+        Tables.parseMergedCell(cellById, _),
+      )
+      tablesById <- makeLookup[Table](allBlocks, sdk.BlockType.TABLE, Tables.parseTable(cellById, mergedCellById, _))
 
       keyValueSetsLookup <- KeyValueSets.extractKeyValueSets(atomBlockById, allBlocks)
 

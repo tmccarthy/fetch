@@ -31,6 +31,13 @@ private[parsing] object Common {
       Right(a)
     }
 
+  def requireValue[A](a: A, expected: A): ExceptionOr[Unit] =
+    if (a == expected) {
+      Right(())
+    } else {
+      Left(GenericException(s"Expected $expected, but was $a"))
+    }
+
   def requireBlockType(block: sdk.Block, expectedType: sdk.BlockType): ExceptionOr[Unit] =
     if (block.blockType() == expectedType) {
       Right(())
