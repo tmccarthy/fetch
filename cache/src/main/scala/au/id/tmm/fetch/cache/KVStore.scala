@@ -1,6 +1,7 @@
 package au.id.tmm.fetch.cache
 
 import cats.Monad
+import cats.effect.IO
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
 
@@ -61,4 +62,6 @@ trait KVStore[F[_], K, V_IN, V_OUT] {
 
 }
 
-object KVStore {}
+object KVStore {
+  type SimpleIO[K, V] = KVStore[IO, K, V, V]
+}

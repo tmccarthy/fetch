@@ -47,6 +47,8 @@ class SqliteStore private (private val database: Database) extends KVStore[IO, S
 
 }
 
+// TODO could probably generalise this to have an arbitrary number of key columns. So you have a tuple of a certain size
+//      as the key and specify the names of the key columns at runtime
 object SqliteStore {
   private val valColumn = ColumnName("val")
   private val keyColumn = ColumnName("key")

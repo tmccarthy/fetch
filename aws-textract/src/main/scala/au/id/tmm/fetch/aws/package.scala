@@ -6,6 +6,7 @@ import cats.effect.IO
 import cats.effect.kernel.Async
 import software.amazon.awssdk.core.client.config.{ClientAsyncConfiguration, SdkAdvancedAsyncClientOption}
 
+// TODO should break this out of the textract module
 package object aws {
 
   private[aws] def toIO[A](completableFuture: IO[CompletableFuture[A]]): IO[A] =
