@@ -15,7 +15,7 @@ val Scala213 = "2.13.8"
 ThisBuild / scalaVersion := Scala213
 ThisBuild / crossScalaVersions := Seq(
   Scala213,
-  "3.1.3",
+  "3.2.1",
 )
 
 ThisBuild / githubWorkflowJavaVersions := List(
@@ -32,14 +32,14 @@ addCommandAlias("check", ";githubWorkflowCheck;scalafmtSbtCheck;+scalafmtCheckAl
 addCommandAlias("fix", ";githubWorkflowGenerate;+scalafmtSbt;+scalafmtAll")
 
 val circeVersion          = "0.15.0-M1"
-val awsSdkVersion         = "2.17.290"
+val awsSdkVersion         = "2.20.3"
 val tmmUtilsVersion       = "0.10.0"
 val tmmCollectionsVersion = "0.2.0"
-val fs2Version            = "3.2.7"
-val sttpVersion           = "3.5.2"
-val catsEffectVersion     = "3.2.9"
-val slf4jVersion          = "2.0.0-alpha1"
-val mUnitVersion          = "0.7.27"
+val fs2Version            = "3.6.1"
+val sttpVersion           = "3.8.11"
+val catsEffectVersion     = "3.4.6"
+val slf4jVersion          = "2.0.5"
+val mUnitVersion          = "0.7.29"
 
 lazy val root = tlCrossRootProject.aggregate(core, cache, awsTextract)
 
@@ -55,7 +55,7 @@ lazy val core = project
     libraryDependencies += "com.github.tototoshi"          %% "scala-csv"                      % "1.3.10",
     libraryDependencies += "com.softwaremill.sttp.client3" %% "async-http-client-backend-cats" % sttpVersion,
     libraryDependencies += "com.softwaremill.sttp.client3" %% "async-http-client-backend-fs2"  % sttpVersion,
-    libraryDependencies += "io.github.resilience4j"         % "resilience4j-ratelimiter"       % "1.7.1",
+    libraryDependencies += "io.github.resilience4j"         % "resilience4j-ratelimiter"       % "2.0.2",
     libraryDependencies += "commons-io"                     % "commons-io"                     % "2.11.0",
     libraryDependencies += "io.circe"                      %% "circe-core"                     % circeVersion,
     libraryDependencies += "io.circe"                      %% "circe-parser"                   % circeVersion,
@@ -78,8 +78,8 @@ lazy val cache = project
   .settings(
     testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies += "org.scalameta" %% "munit"               % mUnitVersion % Test,
-    libraryDependencies += "org.xerial"     % "sqlite-jdbc"         % "3.36.0.3"   % Test,
-    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.5"      % Test,
+    libraryDependencies += "org.xerial"     % "sqlite-jdbc"         % "3.40.1.0"   % Test,
+    libraryDependencies += "org.typelevel" %% "munit-cats-effect-3" % "1.0.7"      % Test,
     libraryDependencies += "org.scalameta" %% "munit-scalacheck"    % "0.7.29"     % Test,
   )
 
@@ -97,7 +97,7 @@ lazy val awsTextract = project
   .settings(
     libraryDependencies += "org.typelevel"                   %% "cats-effect"                    % catsEffectVersion,
     libraryDependencies += "co.fs2"                          %% "fs2-core"                       % fs2Version,
-    libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "0.1.0",
+    libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "1.0.0",
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-core"     % tmmCollectionsVersion,
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-cats"     % tmmCollectionsVersion,
     libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-syntax"               % tmmUtilsVersion,
@@ -109,7 +109,7 @@ lazy val awsTextract = project
     libraryDependencies += "software.amazon.awssdk"           % "textract"                       % awsSdkVersion,
     libraryDependencies += "software.amazon.awssdk"           % "s3"                             % awsSdkVersion,
     libraryDependencies += "software.amazon.awssdk"           % "dynamodb"                       % awsSdkVersion,
-    libraryDependencies += "me.xdrop"                         % "fuzzywuzzy"                     % "1.3.1",
+    libraryDependencies += "me.xdrop"                         % "fuzzywuzzy"                     % "1.4.0",
     libraryDependencies += "org.slf4j"                        % "slf4j-api"                      % slf4jVersion,
     libraryDependencies += "org.slf4j"                        % "slf4j-simple"                   % slf4jVersion % Runtime,
   )
@@ -119,9 +119,9 @@ lazy val awsTextract = project
     IntegrationTest / parallelExecution := false,
     testFrameworks += new TestFramework("munit.Framework"),
     libraryDependencies += "org.scalameta"         %% "munit"                             % mUnitVersion % "it,test",
-    libraryDependencies += "org.typelevel"         %% "munit-cats-effect-3"               % "1.0.5"      % "it,test",
-    libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.13"     % "it",
-    libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.13"     % "it",
+    libraryDependencies += "org.typelevel"         %% "munit-cats-effect-3"               % "1.0.7"      % "it,test",
+    libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.14"     % "it",
+    libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.14"     % "it",
   )
 
 ThisBuild / githubWorkflowBuild += WorkflowStep.Sbt(List("+IntegrationTest/test"), name = Some("Integration test"))

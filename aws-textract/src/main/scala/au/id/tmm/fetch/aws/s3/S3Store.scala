@@ -9,7 +9,6 @@ import au.id.tmm.fetch.cache.KVStore
 import au.id.tmm.fetch.files.Bytes
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
 import cats.effect.{IO, Resource}
-import cats.syntax.applicativeError.catsSyntaxApplicativeError
 import cats.syntax.traverse._
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.services.s3.S3AsyncClient

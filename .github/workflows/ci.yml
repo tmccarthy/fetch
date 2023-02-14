@@ -28,11 +28,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.8, 3.1.3]
+        scala: [2.13.8, 3.2.1]
         java: [temurin@11, temurin@17]
         project: [rootJVM]
         exclude:
-          - scala: 3.1.3
+          - scala: 3.2.1
             java: temurin@17
     runs-on: ${{ matrix.os }}
     steps:
@@ -197,12 +197,12 @@ jobs:
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (3.1.3, rootJVM)
+      - name: Download target directories (3.2.1, rootJVM)
         uses: actions/download-artifact@v2
         with:
-          name: target-${{ matrix.os }}-${{ matrix.java }}-3.1.3-rootJVM
+          name: target-${{ matrix.os }}-${{ matrix.java }}-3.2.1-rootJVM
 
-      - name: Inflate target directories (3.1.3, rootJVM)
+      - name: Inflate target directories (3.2.1, rootJVM)
         run: |
           tar xf targets.tar
           rm targets.tar
