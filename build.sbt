@@ -41,7 +41,7 @@ val catsEffectVersion     = "3.4.6"
 val slf4jVersion          = "2.0.5"
 val mUnitVersion          = "0.7.29"
 
-lazy val root = tlCrossRootProject.aggregate(core, cache, awsTextract)
+lazy val root = tlCrossRootProject.aggregate(core, cache, aws, awsTextract, awsDynamodb)
 
 lazy val core = project
   .in(file("core"))
@@ -83,10 +83,35 @@ lazy val cache = project
     libraryDependencies += "org.scalameta" %% "munit-scalacheck"    % "0.7.29"     % Test,
   )
 
+lazy val aws = project
+  .in(file("aws/core"))
+  .settings(name := "fetch-aws")
+  .dependsOn(cache) // TODO this dependency tree brings in way too much given what is needed. Might need reconsidering
+  .settings(
+    libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"              % "1.0.0",
+    libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-core" % tmmCollectionsVersion,
+    libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-cats" % tmmCollectionsVersion,
+    libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-syntax"           % tmmUtilsVersion,
+    libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-circe"            % tmmUtilsVersion,
+    libraryDependencies += "software.amazon.awssdk"           % "s3"                         % awsSdkVersion,
+    libraryDependencies += "org.slf4j"                        % "slf4j-api"                  % slf4jVersion,
+    libraryDependencies += "org.slf4j"                        % "slf4j-simple"               % slf4jVersion % Runtime,
+  )
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings,
+    IntegrationTest / parallelExecution := false,
+    testFrameworks += new TestFramework("munit.Framework"),
+    libraryDependencies += "org.scalameta"         %% "munit"                             % mUnitVersion % "it,test",
+    libraryDependencies += "org.typelevel"         %% "munit-cats-effect-3"               % "1.0.7"      % "it,test",
+    libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.14"     % "it",
+    libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.14"     % "it",
+  )
+
 lazy val awsTextract = project
   .in(file("aws/textract"))
   .settings(name := "fetch-aws-textract")
-  .dependsOn(cache) // TODO this dependency tree brings in way too much given what is needed. Might need reconsidering
+  .dependsOn(aws)
   .settings(
     // Crashes in 3.1.3
     Compile / doc / sources := (CrossVersion.partialVersion(scalaVersion.value) match {
@@ -95,23 +120,26 @@ lazy val awsTextract = project
     }),
   )
   .settings(
-    libraryDependencies += "org.typelevel"                   %% "cats-effect"                    % catsEffectVersion,
-    libraryDependencies += "co.fs2"                          %% "fs2-core"                       % fs2Version,
-    libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"                  % "1.0.0",
-    libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-core"     % tmmCollectionsVersion,
-    libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-cats"     % tmmCollectionsVersion,
-    libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-syntax"               % tmmUtilsVersion,
-    libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-errors"               % tmmUtilsVersion,
-    libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-cats"                 % tmmUtilsVersion,
-    libraryDependencies += "au.id.tmm.tmm-utils"             %% "tmm-utils-circe"                % tmmUtilsVersion,
-    libraryDependencies += "com.softwaremill.sttp.client3"   %% "core"                           % sttpVersion,
-    libraryDependencies += "com.softwaremill.sttp.client3"   %% "async-http-client-backend-cats" % sttpVersion,
-    libraryDependencies += "software.amazon.awssdk"           % "textract"                       % awsSdkVersion,
-    libraryDependencies += "software.amazon.awssdk"           % "s3"                             % awsSdkVersion,
-    libraryDependencies += "software.amazon.awssdk"           % "dynamodb"                       % awsSdkVersion,
-    libraryDependencies += "me.xdrop"                         % "fuzzywuzzy"                     % "1.4.0",
-    libraryDependencies += "org.slf4j"                        % "slf4j-api"                      % slf4jVersion,
-    libraryDependencies += "org.slf4j"                        % "slf4j-simple"                   % slf4jVersion % Runtime,
+    libraryDependencies += "software.amazon.awssdk" % "textract"   % awsSdkVersion,
+    libraryDependencies += "me.xdrop"               % "fuzzywuzzy" % "1.4.0",
+  )
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings,
+    IntegrationTest / parallelExecution := false,
+    testFrameworks += new TestFramework("munit.Framework"),
+    libraryDependencies += "org.scalameta"         %% "munit"                             % mUnitVersion % "it,test",
+    libraryDependencies += "org.typelevel"         %% "munit-cats-effect-3"               % "1.0.7"      % "it,test",
+    libraryDependencies += "com.github.docker-java" % "docker-java-core"                  % "3.2.14"     % "it",
+    libraryDependencies += "com.github.docker-java" % "docker-java-transport-httpclient5" % "3.2.14"     % "it",
+  )
+
+lazy val awsDynamodb = project
+  .in(file("aws/dynamodb"))
+  .settings(name := "fetch-aws-dynamodb")
+  .dependsOn(aws)
+  .settings(
+    libraryDependencies += "software.amazon.awssdk" % "dynamodb" % awsSdkVersion,
   )
   .configs(IntegrationTest)
   .settings(
