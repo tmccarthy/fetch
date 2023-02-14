@@ -88,6 +88,13 @@ lazy val aws = project
   .settings(name := "fetch-aws")
   .dependsOn(cache) // TODO this dependency tree brings in way too much given what is needed. Might need reconsidering
   .settings(
+    // Crashes in 3.x
+    Compile / doc / sources := (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((3, 0 | 1 | 2)) => Nil
+      case Some(_) | None       => (Compile / doc / sources).value
+    }),
+  )
+  .settings(
     libraryDependencies += "au.id.tmm.digest4s"              %% "digest4s-core"              % "1.0.0",
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-core" % tmmCollectionsVersion,
     libraryDependencies += "au.id.tmm.tmm-scala-collections" %% "tmm-scala-collections-cats" % tmmCollectionsVersion,
@@ -113,10 +120,10 @@ lazy val awsTextract = project
   .settings(name := "fetch-aws-textract")
   .dependsOn(aws)
   .settings(
-    // Crashes in 3.1.3
+    // Crashes in 3.x
     Compile / doc / sources := (CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((3, 0 | 1)) => Nil
-      case Some(_) | None   => (Compile / doc / sources).value
+      case Some((3, 0 | 1 | 2)) => Nil
+      case Some(_) | None       => (Compile / doc / sources).value
     }),
   )
   .settings(
@@ -138,6 +145,13 @@ lazy val awsDynamodb = project
   .in(file("aws/dynamodb"))
   .settings(name := "fetch-aws-dynamodb")
   .dependsOn(aws)
+  .settings(
+    // Crashes in 3.x
+    Compile / doc / sources := (CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((3, 0 | 1 | 2)) => Nil
+      case Some(_) | None       => (Compile / doc / sources).value
+    }),
+  )
   .settings(
     libraryDependencies += "software.amazon.awssdk" % "dynamodb" % awsSdkVersion,
   )
