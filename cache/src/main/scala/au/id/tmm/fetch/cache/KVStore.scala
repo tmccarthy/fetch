@@ -2,6 +2,7 @@ package au.id.tmm.fetch.cache
 
 import cats.Monad
 import cats.effect.IO
+import cats.syntax.functor._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
 
