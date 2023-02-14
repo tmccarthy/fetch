@@ -7,6 +7,7 @@
 dist/*
 /target
 /*/target/
+/aws/*/target/
 /project/project
 lib_managed/
 src_managed/

@@ -84,7 +84,7 @@ lazy val cache = project
   )
 
 lazy val awsTextract = project
-  .in(file("aws-textract"))
+  .in(file("aws/textract"))
   .settings(name := "fetch-aws-textract")
   .dependsOn(cache) // TODO this dependency tree brings in way too much given what is needed. Might need reconsidering
   .settings(
