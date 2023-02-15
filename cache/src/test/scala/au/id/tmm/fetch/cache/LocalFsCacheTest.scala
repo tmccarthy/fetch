@@ -1,16 +1,13 @@
 package au.id.tmm.fetch.cache
 
-import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 
 import au.id.tmm.fetch.cache.LocalFsCacheTest.{KeyForTest, TestClient, ValueForTest}
-import au.id.tmm.fetch.files.BytesSource
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
 import cats.effect.{IO, Resource}
 import munit.CatsEffectSuite
 import org.apache.commons.io.FileUtils
 
-import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
 class LocalFsCacheTest extends CatsEffectSuite {
@@ -24,18 +21,15 @@ class LocalFsCacheTest extends CatsEffectSuite {
       IO(FileUtils.forceDelete(directory.toFile))
     }
 
-  private val localFsStoreResource: Resource[IO, LocalFsStore] = emptyDirectory.evalMap(LocalFsStore.apply)
+  private val localFsStoreResource: Resource[IO, KVStore.SimpleIO[Path, String]] =
+    emptyDirectory.evalMap(Stores.localFsStringStore)
 
   private val cacheResource: Resource[IO, Cache.SimpleIO[KeyForTest, ValueForTest]] = localFsStoreResource
     .map { fsStore =>
       fsStore
         .evalContramapKey[KeyForTest](k => IO(Paths.get(k.asString + ".txt")))
-        .contramapValueIn[ValueForTest](v =>
-          BytesSource.Pure(ArraySeq.unsafeWrapArray(v.asString.getBytes(StandardCharsets.UTF_8))),
-        )
-        .evalMapValueOut[ValueForTest](p =>
-          IO(Files.readString(p, StandardCharsets.UTF_8)).flatMap(s => IO.fromEither(ValueForTest.parse(s))),
-        )
+        .contramapValueIn[ValueForTest](v => v.asString)
+        .evalMapValueOut[ValueForTest](s => IO.fromEither(ValueForTest.parse(s)))
     }
     .map(Cache.SimpleIO[KeyForTest, ValueForTest])
 

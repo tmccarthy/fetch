@@ -1,23 +1,26 @@
 package au.id.tmm.fetch.cache
 
-import java.nio.file.Path
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.{Files, Path}
 
 import au.id.tmm.fetch.cache.sqlite.SqliteStore
 import au.id.tmm.fetch.files.BytesSource
 import cats.effect.{IO, Resource}
 import cats.syntax.traverse._
 import io.circe.{Decoder, Encoder, KeyEncoder, parser}
-import sttp.model.Uri
 
-// TODO not sure how useful this is
+import scala.collection.immutable.ArraySeq
+
 object Stores {
 
-  def localFsUriStore(directory: Path): IO[KVStore[IO, Uri, BytesSource, Path]] =
-    for {
-      store <- LocalFsStore(directory)
-    } yield store.evalContramapKey(KeySchemes.naiveUriAsPath)
+  def localFsStringStore(directory: Path): IO[KVStore.SimpleIO[Path, String]] =
+    LocalFsStore(directory).map { localFsStore =>
+      localFsStore
+        .evalMapValueOut(p => IO(Files.readString(p, UTF_8)))
+        .contramapValueIn[String](s => BytesSource.Pure(ArraySeq.unsafeWrapArray(s.getBytes(UTF_8))))
+    }
 
-  def localStringStore(location: Path): Resource[IO, KVStore[IO, String, String, String]] =
+  def localSqlStringStore(location: Path): Resource[IO, KVStore[IO, String, String, String]] =
     SqliteStore.at(location)
 
   def localJsonStore[K : KeyEncoder, V : Encoder : Decoder](location: Path): Resource[IO, KVStore[IO, K, V, V]] =
