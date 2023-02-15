@@ -12,6 +12,9 @@ trait KVStore[F[_], K, V_IN, V_OUT] {
 
   def contains(k: K): F[Boolean]
 
+  /**
+    * @return the `V_OUT` value corresponding to this put operation
+    */
   def put(k: K, v: V_IN): F[V_OUT]
 
   def drop(k: K): F[Unit]
