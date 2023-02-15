@@ -25,9 +25,10 @@ final class Cache[F[_], K, V_IN, V_OUT] private (store: KVStore[F, K, V_IN, V_OU
 
 object Cache {
 
-  type SimpleIO[K, V] = Cache[IO, K, V, V]
-
   def apply[F[_], K, V_IN, V_OUT](store: KVStore[F, K, V_IN, V_OUT])(implicit F: Monad[F]): Cache[F, K, V_IN, V_OUT] =
     new Cache(store)
+
+  type SimpleIO[K, V] = Cache[IO, K, V, V]
+  def SimpleIO[K, V](store: KVStore.SimpleIO[K, V]): Cache.SimpleIO[K, V] = apply(store)
 
 }
