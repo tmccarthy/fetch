@@ -5,10 +5,10 @@ import java.net.{ServerSocket, URI}
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
 
-import au.id.tmm.fetch.retries.RetryEffect
+import au.id.tmm.fetch.retries.{Retries, RetryPolicy}
 import au.id.tmm.utilities.errors.{ExceptionOr, GenericException}
 import cats.effect.{IO, Resource}
-import cats.syntax.applicativeError._
+import cats.implicits.catsSyntaxApplicativeError
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.command.AsyncDockerCmd
@@ -44,11 +44,12 @@ object DynamoDbDockerTest {
           .build(),
       )
       client <- IO(DockerClientImpl.getInstance(clientConfig, httpClient))
-      _ <- RetryEffect
-        .exponentialRetry(Duration.ofSeconds(2), 1, Duration.ofSeconds(10)) {
+      _ <- RetryPolicy
+        .ExponentialBackoff(Duration.ofSeconds(2), 1, Duration.ofSeconds(10))
+        .retry {
           for {
             _ <- IO(client.pingCmd().exec())
-          } yield RetryEffect.Result.Finished(())
+          } yield Retries.Result.Success(())
         }
         .adaptErr { case e =>
           new IOException("Docker isn't running", e)
@@ -103,8 +104,8 @@ object DynamoDbDockerTest {
     for {
       dynamoURI <- IO.fromEither(ExceptionOr.catchIn(URI.create(s"http://0.0.0.0:${port.asInt}")))
       _ <- dynamoClient(dynamoURI).use[Unit] { dynamoDbClient =>
-        RetryEffect.linearRetry_[Unit](Duration.ofSeconds(1), Duration.ofSeconds(10)) {
-          pingDynamo(dynamoDbClient)
+        RetryPolicy.LinearBackoff(Duration.ofSeconds(1), Duration.ofSeconds(10)).retry[Unit] {
+          pingDynamo(dynamoDbClient).map(Retries.Result.Success.apply)
         }
       }
     } yield dynamoURI

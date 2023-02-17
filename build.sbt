@@ -1,6 +1,6 @@
 name := "fetch"
 
-ThisBuild / tlBaseVersion := "0.8"
+ThisBuild / tlBaseVersion := "0.9"
 
 Sonatype.SonatypeKeys.sonatypeProfileName := "au.id.tmm"
 ThisBuild / organization := "au.id.tmm.fetch"

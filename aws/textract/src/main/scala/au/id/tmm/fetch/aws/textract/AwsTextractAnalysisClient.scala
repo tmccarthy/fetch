@@ -1,15 +1,20 @@
 package au.id.tmm.fetch.aws.textract
 
 import java.time.Duration
+
 import au.id.tmm.fetch.aws.textract.AwsTextractAnalysisClient.logger
 import au.id.tmm.fetch.aws.textract.model.AnalysisResult
 import au.id.tmm.fetch.aws.textract.parsing.Parse
-import au.id.tmm.fetch.retries.RetryEffect
+import au.id.tmm.fetch.retries.{Retries, RetryPolicy}
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.{IO, Resource}
 import cats.implicits.catsSyntaxApplicativeError
 import org.slf4j.{Logger, LoggerFactory}
-import software.amazon.awssdk.services.textract.model.{GetDocumentAnalysisRequest, InvalidJobIdException}
+import software.amazon.awssdk.services.textract.model.{
+  GetDocumentAnalysisRequest,
+  GetDocumentAnalysisResponse,
+  InvalidJobIdException,
+}
 import software.amazon.awssdk.services.{textract => sdk}
 
 import scala.collection.immutable.ArraySeq
@@ -67,27 +72,29 @@ class AwsTextractAnalysisClient private (
           .jobId(jobId.asString)
           .build(),
       )
-      getAnalysisResponse <- RetryEffect.exponentialRetry(
-        initialDelay = Duration.ofSeconds(10),
-        factor = 1,
-        maxWait = Duration.ofMinutes(2),
-      ) {
-        for {
-          responseOrInvalidJob <-
-            IO(textractClient.getDocumentAnalysis(getAnalysisRequest)).attemptNarrow[InvalidJobIdException]
-          response <- responseOrInvalidJob match {
-            case Left(invalidJobIdException) => IO.pure(RetryEffect.Result.FailedFinished(invalidJobIdException))
-            case Right(response) =>
-              response.jobStatus match {
-                case sdk.model.JobStatus.SUCCEEDED   => IO.pure(RetryEffect.Result.Finished(response))
-                case sdk.model.JobStatus.IN_PROGRESS => IO.raiseError(GenericException("Job in progress"))
-                case sdk.model.JobStatus.FAILED | sdk.model.JobStatus.PARTIAL_SUCCESS |
-                    sdk.model.JobStatus.UNKNOWN_TO_SDK_VERSION =>
-                  IO.pure(RetryEffect.Result.FailedFinished(GenericException("Job failed")))
-              }
-          }
-        } yield response
-      }
+      getAnalysisResponse <- RetryPolicy
+        .ExponentialBackoff(
+          initialDelay = Duration.ofSeconds(10),
+          factor = 1,
+          timeout = Duration.ofMinutes(2),
+        )
+        .retry[GetDocumentAnalysisResponse] {
+          for {
+            responseOrInvalidJob <-
+              IO(textractClient.getDocumentAnalysis(getAnalysisRequest)).attemptNarrow[InvalidJobIdException]
+            response = responseOrInvalidJob match {
+              case Left(invalidJobIdException) => Retries.Result.Failed(invalidJobIdException)
+              case Right(response) =>
+                response.jobStatus match {
+                  case sdk.model.JobStatus.SUCCEEDED   => Retries.Result.Success(response)
+                  case sdk.model.JobStatus.IN_PROGRESS => Retries.Result.Continue(cause = None)
+                  case sdk.model.JobStatus.FAILED | sdk.model.JobStatus.PARTIAL_SUCCESS |
+                      sdk.model.JobStatus.UNKNOWN_TO_SDK_VERSION =>
+                    Retries.Result.Failed(GenericException("Job failed"))
+                }
+            }
+          } yield response
+        }
     } yield getAnalysisResponse
 
   private def readRemaining(

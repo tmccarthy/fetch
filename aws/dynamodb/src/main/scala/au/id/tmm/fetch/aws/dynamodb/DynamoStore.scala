@@ -5,7 +5,7 @@ import java.time.Duration
 import au.id.tmm.fetch.aws.dynamodb.DynamoStore.{dynamoKeyName, dynamoValueName}
 import au.id.tmm.fetch.aws.{makeClientAsyncConfiguration, toIO}
 import au.id.tmm.fetch.cache.KVStore
-import au.id.tmm.fetch.retries.RetryEffect
+import au.id.tmm.fetch.retries.{Retries, RetryPolicy}
 import au.id.tmm.utilities.errors.GenericException
 import cats.effect.{IO, Resource}
 import io.circe.Json
@@ -169,21 +169,23 @@ object DynamoStore {
   }
 
   private def waitForTableCreation(client: DynamoDbAsyncClient, tableName: TableName): IO[Unit] =
-    RetryEffect.exponentialRetry(
-      initialDelay = Duration.ofSeconds(10),
-      factor = 1,
-      maxWait = Duration.ofMinutes(1),
-    ) {
-      for {
-        describeTableResponse <- describeTable(client, tableName)
+    RetryPolicy
+      .ExponentialBackoff(
+        initialDelay = Duration.ofSeconds(10),
+        factor = 1,
+        timeout = Duration.ofMinutes(1),
+      )
+      .retry {
+        for {
+          describeTableResponse <- describeTable(client, tableName)
 
-        result <- Option(describeTableResponse.table).map(_.tableStatus) match {
-          case Some(CREATING) => IO.raiseError(GenericException("Table still creating"))
-          case Some(_)        => IO.pure(RetryEffect.Result.Finished(()))
-          case None           => IO.pure(RetryEffect.Result.FailedFinished(GenericException("Table not created")))
-        }
-      } yield result
-    }
+          result = Option(describeTableResponse.table).map(_.tableStatus) match {
+            case Some(CREATING) => Retries.Result.Continue(GenericException("Table still creating"))
+            case Some(_)        => Retries.Result.Success(())
+            case None           => Retries.Result.Failed(GenericException("Table not created"))
+          }
+        } yield result
+      }
 
   private def describeTable(client: DynamoDbAsyncClient, tableName: TableName): IO[DescribeTableResponse] = {
     val request = DescribeTableRequest.builder().tableName(tableName.asString).build()

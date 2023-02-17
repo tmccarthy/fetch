@@ -12,6 +12,8 @@ import scala.concurrent.duration.FiniteDuration
 import scala.math.Ordering.Implicits.infixOrderingOps
 import scala.util.control.NonFatal
 
+// Note that I haven't made this generic in F[_] because doing so means targeting `Temporal`, which is so close to IO
+// that I can't be bothered.
 object Retries {
 
   /**
@@ -34,6 +36,11 @@ object Retries {
       */
     final case class Continue(cause: Option[Throwable]) extends Result[Nothing]
 
+    object Continue {
+      def apply(): Continue                 = Continue(None)
+      def apply(cause: Throwable): Continue = Continue(Some(cause))
+    }
+
     /**
       * Represents the successful completion of an retryable task
       */
@@ -46,7 +53,6 @@ object Retries {
     final case class Failed(cause: Throwable) extends Result[Nothing]
   }
 
-  // TODO generalise in F[_]
   /**
     * Using the given `RetryPolicy`, waits for the given effect to reach a terminal state.
     *
@@ -67,8 +73,10 @@ object Retries {
         a <-
           if (elapsed > policy.timeout) {
             for {
-              (newState, delay) <- policy.computeSleepAndNextState(state)
-              _                 <- IO.sleep(FiniteDuration.apply(delay.toMillis, TimeUnit.MILLISECONDS))
+              nextStep <- policy.computeSleepAndNextState(state)
+              delay    = nextStep.delay
+              newState = nextStep.nextState
+              _ <- IO.sleep(FiniteDuration.apply(delay.toMillis, TimeUnit.MILLISECONDS))
 
               attemptedResult <- effect.attempt
 
@@ -86,8 +94,10 @@ object Retries {
       } yield a
 
     for {
-      (t0, initialState) <- Applicative[IO].tuple2(T0.now[IO], policy.initialState)
-      a                  <- go(t0, initialState, lastFailure = None)
+      t0AndInitialState <- Applicative[IO].tuple2(T0.now[IO], policy.initialState)
+      t0           = t0AndInitialState._1
+      initialState = t0AndInitialState._2
+      a <- go(t0, initialState, lastFailure = None)
     } yield a
   }
 
@@ -102,17 +112,19 @@ sealed trait RetryPolicy[S] {
   def timeout: Duration
   def initialState: IO[S]
 
-  def computeSleepAndNextState(state: S): IO[(S, Duration)]
+  def computeSleepAndNextState(state: S): IO[RetryPolicy.NextStep[S]]
 
   def retry[A](effect: IO[Result[A]]): IO[A] = Retries.retry[A, S](this)(effect)
 }
 
 object RetryPolicy {
-  final case class TaskHasTimedOut(debugMessage: String)
+
+  final case class NextStep[S](nextState: S, delay: Duration)
 
   final case class LinearBackoff(delay: Duration, timeout: Duration) extends RetryPolicy[Unit] {
-    override def initialState: IO[Unit]                                  = IO.unit
-    override def computeSleepAndNextState(x: Unit): IO[(Unit, Duration)] = IO.pure(((), delay))
+    override def initialState: IO[Unit] = IO.unit
+    override def computeSleepAndNextState(x: Unit): IO[RetryPolicy.NextStep[Unit]] =
+      IO.pure(RetryPolicy.NextStep((), delay))
   }
 
   final case class ExponentialBackoff(
@@ -122,9 +134,11 @@ object RetryPolicy {
   ) extends RetryPolicy[ExponentialBackoff.State] {
     override def initialState: IO[ExponentialBackoff.State] = IO.pure(ExponentialBackoff.State(initialDelay))
 
-    override def computeSleepAndNextState(state: ExponentialBackoff.State): IO[(ExponentialBackoff.State, Duration)] = {
+    override def computeSleepAndNextState(
+      state: ExponentialBackoff.State,
+    ): IO[RetryPolicy.NextStep[ExponentialBackoff.State]] = {
       val nextDelay = Duration.ofMillis((state.nextDelay.toMillis * factor).toLong)
-      IO.pure((state.copy(nextDelay = nextDelay), state.nextDelay))
+      IO.pure(RetryPolicy.NextStep(state.copy(nextDelay = nextDelay), state.nextDelay))
     }
   }
 
