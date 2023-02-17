@@ -11,6 +11,7 @@ object RetryEffect {
 
   sealed trait Result[+A]
 
+  // TODO would be better if instead this had a "CONTINUE" option
   object Result {
     final case class Finished[A](a: A)            extends Result[A]
     final case class FailedFinished(t: Throwable) extends Result[Nothing]
