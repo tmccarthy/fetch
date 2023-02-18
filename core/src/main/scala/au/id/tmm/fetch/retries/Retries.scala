@@ -108,11 +108,16 @@ object Retries {
 
 }
 
+/**
+  * Describes a policy for retries
+  * @tparam S a type representing the state of the retry policy. Every time the effect is retried, the policy updates
+  *           the state. It is then recursively passed through the policy as it operates.
+  */
 sealed trait RetryPolicy[S] {
   def timeout: Duration
   def initialState: IO[S]
 
-  def computeSleepAndNextState(state: S): IO[RetryPolicy.NextStep[S]]
+  protected[retries] def computeSleepAndNextState(state: S): IO[RetryPolicy.NextStep[S]]
 
   def retry[A](effect: IO[Result[A]]): IO[A] = Retries.retry[A, S](this)(effect)
 }
