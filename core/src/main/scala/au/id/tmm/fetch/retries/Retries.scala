@@ -72,6 +72,8 @@ object Retries {
         elapsed = Duration.between(t0.asInstant, now)
         a <-
           if (elapsed > policy.timeout) {
+            IO.raiseError(EffectTimedOutException(s"Awaitable task timed out after $elapsed", lastFailure))
+          } else {
             for {
               nextStep <- policy.computeSleepAndNextState(state)
               delay    = nextStep.delay
@@ -88,8 +90,6 @@ object Retries {
                 case Left(fatal: Throwable)        => IO.raiseError(fatal)
               }
             } yield result
-          } else {
-            IO.raiseError(EffectTimedOutException(s"Awaitable task timed out after $elapsed", lastFailure))
           }
       } yield a
 
