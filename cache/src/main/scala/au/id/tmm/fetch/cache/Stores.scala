@@ -13,6 +13,8 @@ import scala.collection.immutable.ArraySeq
 
 object Stores {
 
+  // TODO key should be something like Paths.get(s.replaceAll("[\\W-]+", "-")) to make this String -> String
+
   def localFsStringStore(directory: Path): IO[KVStore.SimpleIO[Path, String]] =
     LocalFsStore(directory).map { localFsStore =>
       localFsStore
