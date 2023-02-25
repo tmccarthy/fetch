@@ -1,14 +1,12 @@
 package au.id.tmm.fetch.files
 
-import java.nio.file.Paths
-
 import munit.{FunSuite, Location}
 
-class NamesTest extends FunSuite {
+class MakingFilenamesTest extends FunSuite {
 
   private def registerNaiveToPathTest(string: String, expectedPath: String)(implicit loc: Location): Unit =
     test(s"""naiveToPath("$string") == "$expectedPath"""") {
-      assertEquals(Names.naiveToPath(string), Paths.get(expectedPath))
+      assertEquals(MakingFilenames.makePathSafe(string), expectedPath)
     }
 
   registerNaiveToPathTest("asdf", "asdf")
